@@ -44,6 +44,34 @@ class Feature_Statistics(object):
             self.Predictions = np.append(self.Predictions, [prediction])
             self.Outcomes    = np.append(self.Outcomes, [outcome])
         
+        new_row    = np.array(sample, dtype=float)
+        scaled_row = np.array(sample, dtype=float)
+
+        total_scores = 0
+        
+        for feature_value in sample:                                 
+            total_scores += abs(feature_value)
+                
+        if total_scores != 0.0:
+            scaled_row = new_row / abs(total_scores)
+            
+        self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
+        self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
+
+        self.Num_Samples += 1
+        
+        
+
+    def Add_LIME_Sample(self, sample, outcome, prediction):
+       
+        if self.mode == 'classification':
+            self.Predictions = np.vstack([self.Predictions, np.asarray(prediction, dtype=float)])
+            self.Outcomes    = np.append(self.Outcomes, [int(outcome)])
+        
+        else:
+            self.Predictions = np.append(self.Predictions, [prediction])
+            self.Outcomes    = np.append(self.Outcomes, [outcome])
+        
 
         new_row    = np.zeros([self.Num_Features], dtype=float)
         scaled_row = np.zeros([self.Num_Features], dtype=float)
