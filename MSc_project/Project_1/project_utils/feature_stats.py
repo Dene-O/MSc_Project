@@ -26,7 +26,7 @@ class Feature_Statistics(object):
             self.Classes     = classes
             self.Num_Classes = len(classes)
             self.Predictions = np.empty([0, self.Num_Classes], float)
-            self.Outcomes       = np.empty([0], dtype=np.uint8)
+            self.Outcomes    = np.empty([0], dtype=np.uint8)
                 
         else:
             self.mode = 'regression'
@@ -173,17 +173,23 @@ class Feature_Statistics(object):
             
     
     
-    def Frequency_Plot(self, top_features=True):
+    def Frequency_Plot(self, top_features=True, display_feature_list=False):
 
         fig, ax = plt.subplots()
 
         title = 'Feature Frequency of Explanations (above threshold ' + str(self.threshold) + \
-                ') from ' + str(self.Num_Samples) + ' Samples'
+                ') from ' + str(self.Num_Samples) + ' Samples for ' + self.Class_String()
        
         if top_features:
-            ax.bar(x = self.Top_Features, height = self.Top_Counts)
+            if display_feature_list:
+                ax.bar(x = np.arange(self.Max_Features), height = self.Top_Counts)
+            else:
+                ax.bar(x = self.Top_Features, height = self.Top_Counts)
         else:
-            ax.bar(x = self.Feature_Names, height = self.All_Counts)
+            if display_feature_list:
+                ax.bar(x = np.arange(self.Num_Features), height = self.All_Counts)
+            else:
+                ax.bar(x = self.Feature_Names, height = self.All_Counts)
         
         ax.set_ylabel('Feature Frequency')
         ax.set_ylim(ymin = 0, ymax = self.Num_Samples)
@@ -192,6 +198,13 @@ class Feature_Statistics(object):
         fig.tight_layout()
         plt.show()
         
+        if display_feature_list:
+            if top_features:
+                self.Print_Top_Features()
+            else:
+                self.Print_Features()
+                
+                
     @staticmethod        
     def Padding(num):
         if num < 10:    return '   '
@@ -210,16 +223,16 @@ class Feature_Statistics(object):
             print(feature+1, '- ', self.Padding(feature+1), self.Feature_Names[feature])
             
             
-    def Violin_Plot(self, top_features=True):
+    def Violin_Plot(self, top_features=True, showextrema=True):
 
         fig, ax = plt.subplots()
 
-        title = 'Violin Plot in Explanations from ' + str(self.Num_Samples) + ' Samples'
+        title = 'Violin Plot in Explanations from ' + str(self.Num_Samples) + ' Samples for ' + self.Class_String()
 
         if top_features:
-            ax.violinplot(dataset = self.Top_Scores, vert=True, widths=0.5, showmeans=True)
+            ax.violinplot(dataset = self.Top_Scores, vert=True, widths=0.5, showmeans=True, showextrema=showextrema)
         else:
-            ax.violinplot(dataset = self.Feature_Scores, vert=True, widths=0.5, showmeans=True)
+            ax.violinplot(dataset = self.Feature_Scores, vert=True, widths=0.5, showmeans=True, showextrema=showextrema)
         
         ax.set_ylabel('Feature Explanation Scores')
         ax.set_title(title)
@@ -232,18 +245,18 @@ class Feature_Statistics(object):
             
         
             
-    def Box_Plot(self, top_features=True):
+    def Box_Plot(self, top_features=True, showfliers=True):
 
         fig, ax = plt.subplots()
 
-        title = 'Box Plot in Explanations from ' + str(self.Num_Samples) + ' Samples'
+        title = 'Box Plot in Explanations from ' + str(self.Num_Samples) + ' Samples for ' + self.Class_String()
 
         if top_features:
             ax.boxplot(x = self.Top_Scores, widths=0.5, \
-                       patch_artist=True, showmeans=True, showfliers=True)
+                       patch_artist=True, showmeans=True, showfliers=showfliers)
         else:
             ax.boxplot(x = self.Feature_Scores, widths=0.5, \
-                       patch_artist=True, showmeans=True, showfliers=True)
+                       patch_artist=True, showmeans=True, showfliers=showfliers)
         
         ax.set_ylabel('Feature Explanation Scores')
         ax.set_title(title)
@@ -375,11 +388,45 @@ class Feature_Statistics(object):
 
         fig.tight_layout()
         plt.show()
-              
         
+              
+    def Class_String(self):
+        return 'All Classes'
 
     def Print_Data(self):
         print(self.Feature_Scores)
         
     def Print_Scaled(self):
         print(self.Scaled_Scores)
+
+    def Number_Of_Samples(self):
+        return self.Num_Samples
+
+        
+class Class_Feature_Statistics(Feature_Statistics):
+
+    def __init__(self, selected_class, feature_names, classes, ):
+        
+        super(Class_Feature_Statistics, self).__init__(feature_names, 'classification', classes)
+
+        if isinstance(selected_class, int):
+            self.Selected_Index = selected_class
+            self.Selected_Class = classes[selected_class]
+        else:
+            self.Selected_Class = selected_class
+            self.Selected_Index = classes.index(selected_class)
+        
+    def Add_Sample(self, sample, outcome, prediction):
+        
+        if outcome == self.Selected_Index or outcome == self.Selected_Class:
+            Feature_Statistics.Add_Sample(self, sample, outcome, prediction)
+       
+    def Add_LIME_Sample(self, sample, outcome, prediction):
+       
+        if outcome == self.Selected_Index or outcome == self.Selected_Class:
+            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
+     
+    def Class_String(self):
+        return self.Selected_Class + ' Class'
+
+
