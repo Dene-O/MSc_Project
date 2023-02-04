@@ -22,27 +22,30 @@ class Feature_Statistics(object):
         self.Scaled_Scores  = np.empty([0, self.Num_Features], dtype=float)
         
         if mode == 'classification':
-            self.mode        = 'classification'
+            self.Mode        = 'classification'
             self.Classes     = classes
             self.Num_Classes = len(classes)
             self.Predictions = np.empty([0, self.Num_Classes], float)
             self.Outcomes    = np.empty([0], dtype=np.uint8)
                 
         else:
-            self.mode = 'regression'
+            self.Mode = 'regression'
             self.Predictions    = np.empty([0], dtype=float)
             self.Outcomes       = np.empty([0], dtype=float)
         
     
     def Add_Sample(self, sample, outcome, prediction):
        
-        if self.mode == 'classification':
+        if self.Mode == 'classification':
             self.Predictions = np.vstack([self.Predictions, np.asarray(prediction, dtype=float)])
             self.Outcomes    = np.append(self.Outcomes, [int(outcome)])
         
         else:
             self.Predictions = np.append(self.Predictions, [prediction])
             self.Outcomes    = np.append(self.Outcomes, [outcome])
+            
+            self.Max_Outcome = np.max(self.Outcomes)
+            self.Min_Outcome = np.min(self.Outcomes)
         
         new_row    = np.array(sample, dtype=float)
         scaled_row = np.array(sample, dtype=float)
@@ -64,13 +67,16 @@ class Feature_Statistics(object):
 
     def Add_LIME_Sample(self, sample, outcome, prediction):
        
-        if self.mode == 'classification':
+        if self.Mode == 'classification':
             self.Predictions = np.vstack([self.Predictions, np.asarray(prediction, dtype=float)])
             self.Outcomes    = np.append(self.Outcomes, [int(outcome)])
         
         else:
             self.Predictions = np.append(self.Predictions, [prediction])
             self.Outcomes    = np.append(self.Outcomes, [outcome])
+        
+            self.Max_Outcome = np.max(self.Outcomes)
+            self.Min_Outcome = np.min(self.Outcomes)
         
 
         new_row    = np.zeros([self.Num_Features], dtype=float)
@@ -178,7 +184,7 @@ class Feature_Statistics(object):
         fig, ax = plt.subplots()
 
         title = 'Feature Frequency of Explanations (above threshold ' + str(self.threshold) + \
-                ') from ' + str(self.Num_Samples) + ' Samples for ' + self.Class_String()
+                ') from ' + str(self.Num_Samples) + ' Samples for ' + self.Group_String()
        
         if top_features:
             if display_feature_list:
@@ -227,7 +233,7 @@ class Feature_Statistics(object):
 
         fig, ax = plt.subplots()
 
-        title = 'Violin Plot in Explanations from ' + str(self.Num_Samples) + ' Samples for ' + self.Class_String()
+        title = 'Violin Plot in Explanations from ' + str(self.Num_Samples) + ' Samples for ' + self.Group_String()
 
         if top_features:
             ax.violinplot(dataset = self.Top_Scores, vert=True, widths=0.5, showmeans=True, showextrema=showextrema)
@@ -249,7 +255,7 @@ class Feature_Statistics(object):
 
         fig, ax = plt.subplots()
 
-        title = 'Box Plot in Explanations from ' + str(self.Num_Samples) + ' Samples for ' + self.Class_String()
+        title = 'Box Plot in Explanations from ' + str(self.Num_Samples) + ' Samples for ' + self.Group_String()
 
         if top_features:
             ax.boxplot(x = self.Top_Scores, widths=0.5, \
@@ -274,7 +280,7 @@ class Feature_Statistics(object):
             
         ###################################################################
         # Show Class Probabilities    
-        if self.mode == 'classification': 
+        if self.Mode == 'classification': 
             fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 2]})
         
             predictions = self.Predictions[instance,:].reshape(1, -1).ravel()
@@ -390,8 +396,8 @@ class Feature_Statistics(object):
         plt.show()
         
               
-    def Class_String(self):
-        return 'All Classes'
+    def Group_String(self):
+        return 'All Samples'
 
     def Print_Data(self):
         print(self.Feature_Scores)
@@ -401,11 +407,22 @@ class Feature_Statistics(object):
 
     def Number_Of_Samples(self):
         return self.Num_Samples
+    
+    def Data_Range(self):
+        return self.Min_Outcome, self.Min_Outcome
+        
+
+    
+    def Class_Subset(self, selected_class):
+        
+        new_instance = Feature_Statistics(self.Feature_Names, self.Mode, self.Classes)
+        
+        return new_instance
 
         
 class Class_Feature_Statistics(Feature_Statistics):
 
-    def __init__(self, selected_class, feature_names, classes, ):
+    def __init__(self, selected_class, feature_names, classes):
         
         super(Class_Feature_Statistics, self).__init__(feature_names, 'classification', classes)
 
@@ -426,7 +443,43 @@ class Class_Feature_Statistics(Feature_Statistics):
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
             Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
      
-    def Class_String(self):
+    def Group_String(self):
         return self.Selected_Class + ' Class'
 
+        
+class Regression_Feature_Statistics(Feature_Statistics):
 
+    def __init__(self, lower, upper, feature_names):
+        
+        super(Regression_Feature_Statistics, self).__init__(feature_names, 'regression')
+
+        self.Lower = lower
+        self.Upper = upper
+        
+    def Add_Sample(self, sample, outcome, prediction):
+        
+        if outcome >= self.Lower and outcome <= self.Upper:
+            Feature_Statistics.Add_Sample(self, sample, outcome, prediction)
+       
+    def Add_LIME_Sample(self, sample, outcome, prediction):
+       
+        if outcome >= self.Lower and outcome <= self.Upper:
+            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
+     
+    def Group_String(self):
+        
+        lower_str = f"{self.Lower[instance]:.4f}"
+        upper_str = f"{self.Upper[instance]:.4f}"
+        return 'Range: + lower_str + '-' + upper_str
+
+
+#class Split_Feature_Statistics(Feature_Statistics):
+
+#    def __init__(self, feature_names, mode='classification', classes=None):
+
+#        super(Class_Feature_Statistics, self).__init__(feature_names, mode, classes)
+
+    
+#    def Split_Classes(self):
+        
+        
