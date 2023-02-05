@@ -50,13 +50,13 @@ class Feature_Statistics(object):
         new_row    = np.array(sample, dtype=float)
         scaled_row = np.array(sample, dtype=float)
 
-        total_scores = 0
-        
+        max_score = 0.0  
         for feature_value in sample:                                 
-            total_scores += abs(feature_value)
+            if max_score < abs(feature_value):
+                max_score = abs(feature_value)
                 
-        if total_scores != 0.0:
-            scaled_row = new_row / abs(total_scores)
+        if max_score != 0.0:
+            scaled_row = new_row / abs(max_score)
             
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
@@ -82,7 +82,7 @@ class Feature_Statistics(object):
         new_row    = np.zeros([self.Num_Features], dtype=float)
         scaled_row = np.zeros([self.Num_Features], dtype=float)
 
-        total_scores = 0
+        max_score = 0
         
         for item in sample:
                      
@@ -90,10 +90,10 @@ class Feature_Statistics(object):
                 
             new_row[feature_index] = item[1]     
             
-            total_scores += abs(item[1])
+            max_score += abs(item[1])
                 
-        if total_scores != 0.0:
-            scaled_row = new_row / abs(total_scores)
+        if max_score != 0.0:
+            scaled_row = new_row / abs(max_score)
             
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
@@ -408,18 +408,94 @@ class Feature_Statistics(object):
     def Number_Of_Samples(self):
         return self.Num_Samples
     
+    def Get_Features(self):
+        return self.Feature_Names
+    
+    def Get_Classes(self):
+        return self.Classes
+    
     def Data_Range(self):
         return self.Min_Outcome, self.Min_Outcome
         
+    def Copy_Rows (self, target):
+        
+        for row in range(self.Num_Samples):
+            target.Add_Sample(self.Feature_Scores[row], self.Outcomes[row], self.Predictions[row])
+
+
+    def Get_Ranges(self, num_ranges):
+        
+        outcome_range = self.Max_Outcome - self.Min_Outcome
+        
+        low_val   = self.Min_Outcome - (0.005 * outcome_range)
+        increment = outcome_range * 1.01 / num_ranges
+                
+        return_ranges = np.empty([num_ranges + 1], dtype=float)
+
+        for index in range(num_ranges + 1):
+            return_ranges[index] = low_val + (index * increment)
+
+        return return_ranges
+            
+#############################################################################################
+# Classes used to hold and contain statistics for ranges of regression outcomes
+
+class Regression_Feature_Statistics(Feature_Statistics):
+
+    def __init__(self, lower, upper, feature_names):
+        
+        super(Regression_Feature_Statistics, self).__init__(feature_names, 'regression')
+
+        self.Lower = lower
+        self.Upper = upper
+        
+    def Add_Sample(self, sample, outcome, prediction):
+        
+        if outcome >= self.Lower and outcome <= self.Upper:
+            Feature_Statistics.Add_Sample(self, sample, outcome, prediction)
+       
+    def Add_LIME_Sample(self, sample, outcome, prediction):
+       
+        if outcome >= self.Lower and outcome <= self.Upper:
+            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
+     
+    def Group_String(self):
+        
+        lower_str = f"{self.Lower:.3f}"
+        upper_str = f"{self.Upper:.3f}"
+        return 'Range:' + lower_str + '-' + upper_str
+
 
     
-    def Class_Subset(self, selected_class):
+class Regression_Container(object):        
         
-        new_instance = Feature_Statistics(self.Feature_Names, self.Mode, self.Classes)
+    def __init__(self, Reg_Stats, num_ranges):
         
-        return new_instance
+        self.Num_Ranges = num_ranges
+        
+        outcome_range = Reg_Stats.Get_Ranges(num_ranges)
 
+        self.Stats_List = []
+        for index in range(num_ranges):
+            
+            new_element = Regression_Feature_Statistics(outcome_range[index], outcome_range[index+1], Reg_Stats.Get_Features())
+            
+            Reg_Stats.Copy_Rows(new_element)
+                        
+            self.Stats_List.append(new_element)
+            
+    def Feature_Counts(self, max_features=10, scaled=True, threshold=0.075):
         
+        for Element in self.Stats_List:
+            Element.Feature_Counts(max_features, scaled, threshold)
+            
+    def Element(self, index):
+        return self.Stats_List[index]
+
+    
+#############################################################################################
+# Classes used to hold and contain statistics for different class outcomes
+
 class Class_Feature_Statistics(Feature_Statistics):
 
     def __init__(self, selected_class, feature_names, classes):
@@ -446,40 +522,33 @@ class Class_Feature_Statistics(Feature_Statistics):
     def Group_String(self):
         return self.Selected_Class + ' Class'
 
+                
+class Classes_Container(object):        
         
-class Regression_Feature_Statistics(Feature_Statistics):
-
-    def __init__(self, lower, upper, feature_names):
+    def __init__(self, Class_Stats):
         
-        super(Regression_Feature_Statistics, self).__init__(feature_names, 'regression')
-
-        self.Lower = lower
-        self.Upper = upper
+        self.Classes = Class_Stats.Get_Classes()
         
-    def Add_Sample(self, sample, outcome, prediction):
+        self.Stats_List = []
+        for index in self.Classes:
+            
+            new_element = Class_Feature_Statistics(index, Class_Stats.Get_Features(), self.Classes)
+            
+            Class_Stats.Copy_Rows(new_element)
+                        
+            self.Stats_List.append(new_element)
+            
+    def Feature_Counts(self, max_features=10, scaled=True, threshold=0.075):
         
-        if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_Sample(self, sample, outcome, prediction)
-       
-    def Add_LIME_Sample(self, sample, outcome, prediction):
-       
-        if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
-     
-    def Group_String(self):
+        for Element in self.Stats_List:
+            Element.Feature_Counts(max_features, scaled, threshold)
+            
+    def Element(self, index):
+              
+        if isinstance(index, int):
+            return self.Stats_List[index]
+        else:
+            return self.Stats_List[self.Classes.index(index)]
         
-        lower_str = f"{self.Lower[instance]:.4f}"
-        upper_str = f"{self.Upper[instance]:.4f}"
-        return 'Range: + lower_str + '-' + upper_str
-
-
-#class Split_Feature_Statistics(Feature_Statistics):
-
-#    def __init__(self, feature_names, mode='classification', classes=None):
-
-#        super(Class_Feature_Statistics, self).__init__(feature_names, mode, classes)
-
     
-#    def Split_Classes(self):
-        
         
