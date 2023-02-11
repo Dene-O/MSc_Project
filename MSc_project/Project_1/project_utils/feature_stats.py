@@ -14,32 +14,33 @@ class Feature_Statistics(object):
     colour_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:yellow']
     colour_max  = len(colour_list)
                           
-    def __init__(self, feature_names, mode='classification', classes=None):
+    def __init__(self, feature_names=None, mode='classification', classes=None, file_handle=None):
+
+        if file_handle == None:
+            
+            self.Feature_Names  = feature_names
+            self.Num_Features   = len(feature_names)
+            self.Num_Samples    = 0
+            self.Feature_Scores = np.empty([0, self.Num_Features], dtype=float)
+            self.Scaled_Scores  = np.empty([0, self.Num_Features], dtype=float)
         
-        self.Feature_Names  = feature_names
-        self.Num_Features   = len(feature_names)
-        self.Num_Samples    = 0
-        self.Feature_Scores = np.empty([0, self.Num_Features], dtype=float)
-        self.Scaled_Scores  = np.empty([0, self.Num_Features], dtype=float)
-        
-        if mode == 'classification':
-            self.Mode        = 'classification'
-            self.Classes     = classes
-            self.Num_Classes = len(classes)
-            self.Predictions = np.empty([0, self.Num_Classes], float)
-            self.Outcomes    = np.empty([0], dtype=np.uint8)
+            if mode == 'classification':
+                self.Mode        = 'classification'
+                self.Classes     = classes
+                self.Num_Classes = len(classes)
+                self.Predictions = np.empty([0, self.Num_Classes], float)
+                self.Outcomes    = np.empty([0], dtype=np.uint8)
+                
+            else:
+                self.Mode           = 'regression'
+                self.Predictions    = np.empty([0], dtype=float)
+                self.Outcomes       = np.empty([0], dtype=float)
                 
         else:
-            self.Mode           = 'regression'
-            self.Predictions    = np.empty([0], dtype=float)
-            self.Outcomes       = np.empty([0], dtype=float)
-        
-    # create instance from file     
-    def __init__(self, file_handle):
-        
-         self.Read_From_File(file_handle)
-            
-    
+            self.Read_From_File(file_handle)
+
+
+           
     def Add_Sample(self, sample, outcome, prediction):
        
         if self.Mode == 'classification':
@@ -123,22 +124,22 @@ class Feature_Statistics(object):
 
     def Write_To_File(self, file_handle):
 
-        pickle.dump(self.Feature_Names, file_handle)
-        pickle.dump(self.Num_Features,  file_handle)  
-        pickle.dump(self.Num_Samples,  file_handle)  
+        pickle.dump(self.Feature_Names,  file_handle)
+        pickle.dump(self.Num_Features,   file_handle)  
+        pickle.dump(self.Num_Samples,    file_handle)  
         pickle.dump(self.Feature_Scores, file_handle)
-        pickle.dump(self.Scaled_Scores, file_handle)
-        pickle.dump(self.Mode, file_handle)
+        pickle.dump(self.Scaled_Scores,  file_handle)
+        pickle.dump(self.Mode,           file_handle)
 
         if self.Mode == 'classification':
             pickle.dump(self.Predictions, file_handle)
-            pickle.dump(self.Outcomes, file_handle)   
-            pickle.dump(self.Classes, file_handle)    
+            pickle.dump(self.Outcomes,    file_handle)   
+            pickle.dump(self.Classes,     file_handle)    
             pickle.dump(self.Num_Classes, file_handle)
                 
         else:
             pickle.dump(self.Predictions, file_handle)
-            pickle.dump(self.Outcomes, file_handle)   
+            pickle.dump(self.Outcomes,    file_handle)   
             pickle.dump(self.Min_Outcome, file_handle)
             pickle.dump(self.Max_Outcome, file_handle)
 
@@ -160,7 +161,7 @@ class Feature_Statistics(object):
                 
         else:
             self.Predictions  = pickle.load(file_handle)
-            self.Outcomes  = pickle.load(file_handle)   
+            self.Outcomes     = pickle.load(file_handle)   
             self.Min_Outcome  = pickle.load(file_handle)
             self.Max_Outcome  = pickle.load(file_handle)
 
