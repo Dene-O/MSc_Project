@@ -4,7 +4,7 @@ import GPyOpt
 import numpy as np
 from unravel.plot_util import plot_scores
 from unravel.kernel_util import Kernel
-from unravel.acquisition_util import FUR, UR, UCB
+from unravel.acquisition_util import FUR_w, FUR, UR, UCB
 
 
 class UnRAVELTabularExplainer:
@@ -100,6 +100,7 @@ class UnRAVELTabularExplainer:
         kernel,
         max_iter=50,
         alpha="EI",
+        alpha_params=None,
         jitter=5,
         interval=1,
         verbosity=False,
@@ -127,11 +128,22 @@ class UnRAVELTabularExplainer:
         bounds = self.generate_domain(X_init[0], interval=interval)
 
         # Initializing explainer model f_e
-        if alpha == "FUR" or alpha == "UR" or alpha == "LCB_custom":
+        if alpha == "FUR_w" or alpha == "FUR" or alpha == "UR" or alpha == "LCB_custom":
             objective = GPyOpt.core.task.SingleObjective(lambda x: self.f_p(x))
             space = GPyOpt.Design_space(space=bounds)
             model = GPyOpt.models.GPModel(kernel=kernel.kernel, verbose=False)
             aquisition_optimizer = GPyOpt.optimization.AcquisitionOptimizer(space)
+
+            if alpha == "FUR_w":
+                acquisition = FUR_w(
+                    model,
+                    space,
+                    optimizer=aquisition_optimizer,
+                    X_init=X_init,
+                    std=self.std,
+                    weight=alpha_params
+                )
+
             if alpha == "FUR":
                 acquisition = FUR(
                     model,
@@ -257,6 +269,7 @@ class UnRAVELTabularExplainer:
         kernel_type="RBF",
         max_iter=50,
         alpha="EI",
+        alpha_params=None,
         jitter=5,
         normalize=True,
         plot=True,
@@ -298,6 +311,7 @@ class UnRAVELTabularExplainer:
             kernel=kernel,
             max_iter=max_iter,
             alpha=alpha,
+            alpha_params=alpha_params,
             jitter=jitter,
             interval=interval,
             verbosity=verbosity,

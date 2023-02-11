@@ -186,7 +186,7 @@ class LimeTabularExplainer(object):
                 means", "mins", "maxs", "stds", "feature_values",
                 "feature_frequencies"
         """
-        self.random_state = check_random_state(random_state)
+        self.random_state = normal(random_state)
         self.mode = mode
         self.categorical_names = categorical_names or {}
         self.sample_around_instance = sample_around_instance
@@ -522,6 +522,12 @@ class LimeTabularExplainer(object):
                 data = self.random_state.normal(0, 1, num_samples * num_cols
                                                 ).reshape(num_samples, num_cols)
                 data = np.array(data)
+
+            elif sampling_method == 'student_t':
+                data = self.random_state.standard_t(1, num_samples * num_cols
+                                                    ).reshape(num_samples, num_cols)
+                data = np.array(data)
+                
             elif sampling_method == 'lhs':
                 data = lhs(num_cols, samples=num_samples
                            ).reshape(num_samples, num_cols)
@@ -531,7 +537,7 @@ class LimeTabularExplainer(object):
                     data[:, i] = norm(loc=means[i], scale=stdvs[i]).ppf(data[:, i])
                 data = np.array(data)
             else:
-                warnings.warn('''Invalid input for sampling_method.
+                warnings.warn('''Invalid inormalut for sampling_method.
                                  Defaulting to Gaussian sampling.''', UserWarning)
                 data = self.random_state.normal(0, 1, num_samples * num_cols
                                                 ).reshape(num_samples, num_cols)

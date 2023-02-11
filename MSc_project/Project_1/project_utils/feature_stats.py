@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 
 from copy import deepcopy
 
+import pickle
+
 #from sklearn.utils import check_random_state
 
 
@@ -11,8 +13,7 @@ class Feature_Statistics(object):
     #list of colours and its range for dipslaying graphs
     colour_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:yellow']
     colour_max  = len(colour_list)
-    
-                       
+                          
     def __init__(self, feature_names, mode='classification', classes=None):
         
         self.Feature_Names  = feature_names
@@ -29,10 +30,15 @@ class Feature_Statistics(object):
             self.Outcomes    = np.empty([0], dtype=np.uint8)
                 
         else:
-            self.Mode = 'regression'
+            self.Mode           = 'regression'
             self.Predictions    = np.empty([0], dtype=float)
             self.Outcomes       = np.empty([0], dtype=float)
         
+    # create instance from file     
+    def __init__(self, file_handle):
+        
+         self.Read_From_File(file_handle)
+            
     
     def Add_Sample(self, sample, outcome, prediction):
        
@@ -109,6 +115,55 @@ class Feature_Statistics(object):
                 return index
             index += 1
 
+    def Copy_Rows (self, target):
+        
+        for row in range(self.Num_Samples):
+            target.Add_Sample(self.Feature_Scores[row], self.Outcomes[row], self.Predictions[row])
+
+
+    def Write_To_File(self, file_handle):
+
+        pickle.dump(self.Feature_Names, file_handle)
+        pickle.dump(self.Num_Features,  file_handle)  
+        pickle.dump(self.Num_Samples,  file_handle)  
+        pickle.dump(self.Feature_Scores, file_handle)
+        pickle.dump(self.Scaled_Scores, file_handle)
+        pickle.dump(self.Mode, file_handle)
+
+        if self.Mode == 'classification':
+            pickle.dump(self.Predictions, file_handle)
+            pickle.dump(self.Outcomes, file_handle)   
+            pickle.dump(self.Classes, file_handle)    
+            pickle.dump(self.Num_Classes, file_handle)
+                
+        else:
+            pickle.dump(self.Predictions, file_handle)
+            pickle.dump(self.Outcomes, file_handle)   
+            pickle.dump(self.Min_Outcome, file_handle)
+            pickle.dump(self.Max_Outcome, file_handle)
+
+
+    def Read_From_File(self, file_handle):
+              
+        self.Feature_Names  = pickle.load(file_handle)  
+        self.Num_Features   = pickle.load(file_handle)  
+        self.Num_Samples    = pickle.load(file_handle)  
+        self.Feature_Scores = pickle.load(file_handle)
+        self.Scaled_Scores  = pickle.load(file_handle)
+        self.Mode           = pickle.load(file_handle)
+
+        if self.Mode == 'classification':
+            self.Predictions = pickle.load(file_handle)
+            self.Outcomes    = pickle.load(file_handle)   
+            self.Classes     = pickle.load(file_handle)    
+            self.Num_Classes = pickle.load(file_handle)
+                
+        else:
+            self.Predictions  = pickle.load(file_handle)
+            self.Outcomes  = pickle.load(file_handle)   
+            self.Min_Outcome  = pickle.load(file_handle)
+            self.Max_Outcome  = pickle.load(file_handle)
+
             
     def Feature_Counts(self, max_features=10, scaled=True, threshold=0.075):
         
@@ -125,7 +180,7 @@ class Feature_Statistics(object):
                     if abs(self.Feature_Scores[row][column]) > threshold:
                         counts[column] += 1
                         
-        self.threshold    = threshold
+        self.threshold  = threshold
 
         self.All_Counts = deepcopy(counts)
         
@@ -210,7 +265,8 @@ class Feature_Statistics(object):
             else:
                 self.Print_Features()
                 
-                
+                           
+             
     @staticmethod        
     def Padding(num):
         if num < 10:    return '   '
@@ -273,8 +329,7 @@ class Feature_Statistics(object):
         else:
             self.Print_Features()
             
-                
-    
+     
 
     def View_Explanation(self, instance, max_features=10):
             
@@ -417,12 +472,6 @@ class Feature_Statistics(object):
     def Data_Range(self):
         return self.Min_Outcome, self.Min_Outcome
         
-    def Copy_Rows (self, target):
-        
-        for row in range(self.Num_Samples):
-            target.Add_Sample(self.Feature_Scores[row], self.Outcomes[row], self.Predictions[row])
-
-
     def Get_Ranges(self, num_ranges):
         
         outcome_range = self.Max_Outcome - self.Min_Outcome
@@ -436,9 +485,57 @@ class Feature_Statistics(object):
             return_ranges[index] = low_val + (index * increment)
 
         return return_ranges
+
+#############################################################################################
+# Abstract class for containg groups of stats
+
+class Group_Container(object):        
+        
+    def __init__(self, Reg_Stats):
+        self.Stats_List = []
+
+    def Feature_Counts(self, max_features=10, scaled=True, threshold=0.075):
+        
+        self.threshold = threshold
+        
+        for Element in self.Stats_List:
+            Element.Feature_Counts(max_features, scaled, threshold)
+            
+
+    def Frequency_Plot(self, y_max=None, normalised=True, Overlay=False):
+
+        if normalised:
+            title = 'Normalised Feature Frequency of Explanations (above threshold ' + str(self.threshold)
+        else:
+            title = 'Feature Frequency of Explanations (above threshold ' + str(self.threshold)
+
+        num_features   = len(self.Stats_List[0].Get_Features())
+        summed_bottom = np.zeros([num_features])
+
+        fig, ax = plt.subplots()
+
+        for Element in self.Stats_List:
+            if not Overlay:
+                bottom = summed_bottom
+            summed_bottom = Element.Plot_To_Axis(ax, normalised, bottom)
+        
+        if y_max == 'NoS':
+            y_max = self.Num_Samples
+            
+        ax.set_ylabel('Feature Frequency')
+        ax.set_ylim(ymin = 0, ymax = y_max)
+        ax.set_title(title)
+
+        fig.tight_layout()
+        ax.legend()
+        plt.show()
+        
+        self.Stats_List[0].Print_Features()
+                
             
 #############################################################################################
 # Classes used to hold and contain statistics for ranges of regression outcomes
+
 
 class Regression_Feature_Statistics(Feature_Statistics):
 
@@ -448,6 +545,9 @@ class Regression_Feature_Statistics(Feature_Statistics):
 
         self.Lower = lower
         self.Upper = upper
+        
+        self.Label = f"{lower:.2f}" + '-' + f"{upper:.2f}"
+         
         
     def Add_Sample(self, sample, outcome, prediction):
         
@@ -459,6 +559,21 @@ class Regression_Feature_Statistics(Feature_Statistics):
         if outcome >= self.Lower and outcome <= self.Upper:
             Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
      
+    def Plot_To_Axis(self, axis, normalised, bottom):
+
+        counts = self.All_Counts
+        
+        if normalised:
+            counts = counts / self.Num_Samples
+        
+        axis.bar(x = np.arange(self.Num_Features), height = counts, \
+                 label=self.Label, bottom = bottom)
+        
+        bottom = bottom + counts
+        
+        return bottom
+    
+            
     def Group_String(self):
         
         lower_str = f"{self.Lower:.3f}"
@@ -467,11 +582,12 @@ class Regression_Feature_Statistics(Feature_Statistics):
 
 
     
-class Regression_Container(object):        
+class Regression_Container(Group_Container):        
         
     def __init__(self, Reg_Stats, num_ranges):
         
-        self.Num_Ranges = num_ranges
+        self.Num_Ranges  = num_ranges
+        self.Num_Samples = Reg_Stats.Number_Of_Samples()
         
         outcome_range = Reg_Stats.Get_Ranges(num_ranges)
 
@@ -484,17 +600,13 @@ class Regression_Container(object):
                         
             self.Stats_List.append(new_element)
             
-    def Feature_Counts(self, max_features=10, scaled=True, threshold=0.075):
-        
-        for Element in self.Stats_List:
-            Element.Feature_Counts(max_features, scaled, threshold)
-            
     def Element(self, index):
         return self.Stats_List[index]
 
-    
+            
 #############################################################################################
 # Classes used to hold and contain statistics for different class outcomes
+
 
 class Class_Feature_Statistics(Feature_Statistics):
 
@@ -519,15 +631,31 @@ class Class_Feature_Statistics(Feature_Statistics):
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
             Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
      
+    def Plot_To_Axis(self, ax, normalised, bottom):
+    
+        counts = self.All_Counts
+        
+        if normalised:
+            counts = counts / self.Num_Samples
+        
+        ax.bar(x = np.arange(self.Num_Features), height = counts, \
+               label=self.Selected_Class, bottom = bottom)
+        
+        bottom = bottom + counts
+        
+        return bottom
+
+            
     def Group_String(self):
-        return self.Selected_Class + ' Class'
+        return ' Class ' + self.Selected_Class
 
                 
-class Classes_Container(object):        
+class Classes_Container(Group_Container):        
         
     def __init__(self, Class_Stats):
         
-        self.Classes = Class_Stats.Get_Classes()
+        self.Classes     = Class_Stats.Get_Classes()
+        self.Num_Samples = Class_Stats.Number_Of_Samples()
         
         self.Stats_List = []
         for index in self.Classes:
@@ -538,10 +666,6 @@ class Classes_Container(object):
                         
             self.Stats_List.append(new_element)
             
-    def Feature_Counts(self, max_features=10, scaled=True, threshold=0.075):
-        
-        for Element in self.Stats_List:
-            Element.Feature_Counts(max_features, scaled, threshold)
             
     def Element(self, index):
               

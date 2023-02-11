@@ -186,7 +186,7 @@ class LimeTabularExplainer(object):
                 means", "mins", "maxs", "stds", "feature_values",
                 "feature_frequencies"
         """
-        self.random_state = check_random_state(random_state)
+        self.random_state = normal(random_state)
         self.mode = mode
         self.categorical_names = categorical_names or {}
         self.sample_around_instance = sample_around_instance
@@ -407,7 +407,7 @@ class LimeTabularExplainer(object):
             feature_names = [str(x) for x in range(data_row.shape[0])]
 
         if sp.sparse.issparse(data_row):
-            values = self.convert_and_round(data_row.data)predicted_value
+            values = self.convert_and_round(data_row.data)
             feature_indexes = data_row.indices
         else:
             values = self.convert_and_round(data_row)
@@ -437,7 +437,7 @@ class LimeTabularExplainer(object):
                                           scaled_data[0],
                                           categorical_features=categorical_features,
                                           discretized_feature_names=discretized_feature_names,
-                                          feature_indexes=predicted_value)
+                                          feature_indexes=feature_indexes)
         ret_exp = explanation.Explanation(domain_mapper,
                                           mode=self.mode,
                                           class_names=self.class_names)
@@ -522,6 +522,12 @@ class LimeTabularExplainer(object):
                 data = self.random_state.normal(0, 1, num_samples * num_cols
                                                 ).reshape(num_samples, num_cols)
                 data = np.array(data)
+
+            elif sampling_method == 'student_t':
+                data = self.random_state.standard_t(1, num_samples * num_cols
+                                                    ).reshape(num_samples, num_cols)
+                data = np.array(data)
+                
             elif sampling_method == 'lhs':
                 data = lhs(num_cols, samples=num_samples
                            ).reshape(num_samples, num_cols)
@@ -531,7 +537,7 @@ class LimeTabularExplainer(object):
                     data[:, i] = norm(loc=means[i], scale=stdvs[i]).ppf(data[:, i])
                 data = np.array(data)
             else:
-                warnings.warn('''Invalid input for sampling_method.
+                warnings.warn('''Invalid inormalut for sampling_method.
                                  Defaulting to Gaussian sampling.''', UserWarning)
                 data = self.random_state.normal(0, 1, num_samples * num_cols
                                                 ).reshape(num_samples, num_cols)
