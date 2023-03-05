@@ -28,7 +28,7 @@ class FUR_w(GPyOpt.acquisitions.base.AcquisitionBase):
             self.weight = [1.0, 1.0]
             
         elif isinstance(weight, float):
-            self.weight = [weight, 2.0 - weight]
+            self.weight = [weight, 1.0 - weight]
             
         else:
             self.weight = weight            
@@ -50,13 +50,12 @@ class FUR_w(GPyOpt.acquisitions.base.AcquisitionBase):
     def Set_Weight(weight):
         
         if isinstance(weight, float):
-            self.weight = [weight, 2.0 - weight]
+            self.weight = [weight, 1.0 - weight]
             
         else:
             self.weight = weight            
-            
 
-          
+
 
 class FUR(GPyOpt.acquisitions.base.AcquisitionBase):
 

@@ -502,6 +502,7 @@ class UnRAVELEvaluator(ModelEvaluator):
             range(iterations),
             total=iterations,
         ):
+            print('generate_scores_singlecore',X_init)
             f_optim = unravel_explainer.generate_optimizer(
                 X_init=X_init,
                 max_iter=max_iter,

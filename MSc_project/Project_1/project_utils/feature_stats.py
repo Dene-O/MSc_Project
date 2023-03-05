@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 
 from copy import deepcopy
 
+from itertools import combinations
+
+
 import pickle
 
 #from sklearn.utils import check_random_state
@@ -25,15 +28,17 @@ class Feature_Statistics(object):
             self.Scaled_Scores  = np.empty([0, self.Num_Features], dtype=float)
         
             if mode == 'classification':
-                self.Mode        = 'classification'
-                self.Classes     = classes
-                self.Num_Classes = len(classes)
-                self.Predictions = np.empty([0, self.Num_Classes], float)
-                self.Outcomes    = np.empty([0], dtype=np.uint8)
+                self.Mode          = 'classification'
+                self.Classes       = classes
+                self.Num_Classes   = len(classes)
+                self.f_predictions = np.empty([0, self.Num_Classes], float)
+                self.e_predictions = np.empty([0, self.Num_Classes], float)
+                self.Outcomes      = np.empty([0], dtype=np.uint8)
                 
             else:
                 self.Mode           = 'regression'
-                self.Predictions    = np.empty([0], dtype=float)
+                self.f_predictions  = np.empty([0], dtype=float)
+                self.e_predictions  = np.empty([0, 2], dtype=float)
                 self.Outcomes       = np.empty([0], dtype=float)
                 
         else:
@@ -41,15 +46,17 @@ class Feature_Statistics(object):
 
 
            
-    def Add_Sample(self, sample, outcome, prediction):
+    def Add_Sample(self, sample, outcome, f_prediction, e_prediction=[0,0]):
        
         if self.Mode == 'classification':
-            self.Predictions = np.vstack([self.Predictions, np.asarray(prediction, dtype=float)])
-            self.Outcomes    = np.append(self.Outcomes, [int(outcome)])
+            self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
+            self.e_predictions = np.vstack([self.e_predictions, np.asarray(e_prediction, dtype=float)])
+            self.Outcomes      = np.append(self.Outcomes, [int(outcome)])
         
         else:
-            self.Predictions = np.append(self.Predictions, [prediction])
-            self.Outcomes    = np.append(self.Outcomes, [outcome])
+            self.f_predictions = np.append(self.f_predictions, [f_prediction])
+            self.e_predictions = np.vstack([self.e_predictions, np.asarray(e_prediction, dtype=float)])
+            self.Outcomes      = np.append(self.Outcomes, [outcome])
             
             self.Max_Outcome = np.max(self.Outcomes)
             self.Min_Outcome = np.min(self.Outcomes)
@@ -57,11 +64,7 @@ class Feature_Statistics(object):
         new_row    = np.array(sample, dtype=float)
         scaled_row = np.array(sample, dtype=float)
 
-        max_score = 0.0  
-        for feature_value in sample:                                 
-            if max_score < abs(feature_value):
-                max_score = abs(feature_value)
-                
+        max_score = np.max(abs(new_row))
         if max_score != 0.0:
             scaled_row = new_row / abs(max_score)
             
@@ -72,16 +75,22 @@ class Feature_Statistics(object):
         
         
 
-    def Add_LIME_Sample(self, sample, outcome, prediction):
+    def Add_LIME_Sample(self, sample, outcome, f_predictionn, e_prediction=[0,0]):
        
         if self.Mode == 'classification':
-            self.Predictions = np.vstack([self.Predictions, np.asarray(prediction, dtype=float)])
-            self.Outcomes    = np.append(self.Outcomes, [int(outcome)])
+            self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
+            self.e_predictions = np.vstack([self.e_predictions, np.asarray(e_prediction, dtype=float)])
+            self.Outcomes      = np.append(self.Outcomes, [int(outcome)])
         
         else:
-            self.Predictions = np.append(self.Predictions, [prediction])
-            self.Outcomes    = np.append(self.Outcomes, [outcome])
-        
+            self.f_predictions = np.append(self.f_predictions, [f_prediction])
+            self.Outcomes      = np.append(self.Outcomes, [outcome])
+
+            e_prediction = np.asarray(e_prediction, dtype=float)
+            #e_prediction = np.append(e_prediction, [0.0])#########################################################
+            self.e_predictions = np.vstack([self.e_predictions, e_prediction])
+
+            
             self.Max_Outcome = np.max(self.Outcomes)
             self.Min_Outcome = np.min(self.Outcomes)
         
@@ -89,7 +98,6 @@ class Feature_Statistics(object):
         new_row    = np.zeros([self.Num_Features], dtype=float)
         scaled_row = np.zeros([self.Num_Features], dtype=float)
 
-        max_score = 0
         
         for item in sample:
                      
@@ -97,8 +105,8 @@ class Feature_Statistics(object):
                 
             new_row[feature_index] = item[1]     
             
-            max_score += abs(item[1])
-                
+            
+        max_score = np.max(abs(new_row))                
         if max_score != 0.0:
             scaled_row = new_row / abs(max_score)
             
@@ -115,11 +123,13 @@ class Feature_Statistics(object):
             if name == feature_name:
                 return index
             index += 1
+                    
 
     def Copy_Rows (self, target):
         
         for row in range(self.Num_Samples):
-            target.Add_Sample(self.Feature_Scores[row], self.Outcomes[row], self.Predictions[row])
+            target.Add_Sample(self.Feature_Scores[row], self.Outcomes[row],
+                              self.f_predictions[row],  self.e_predictions[row])
 
 
     def Write_To_File(self, file_handle):
@@ -132,16 +142,18 @@ class Feature_Statistics(object):
         pickle.dump(self.Mode,           file_handle)
 
         if self.Mode == 'classification':
-            pickle.dump(self.Predictions, file_handle)
-            pickle.dump(self.Outcomes,    file_handle)   
-            pickle.dump(self.Classes,     file_handle)    
-            pickle.dump(self.Num_Classes, file_handle)
+            pickle.dump(self.f_predictions, file_handle)
+            pickle.dump(self.e_predictions, file_handle)
+            pickle.dump(self.Outcomes,      file_handle)   
+            pickle.dump(self.Classes,       file_handle)    
+            pickle.dump(self.Num_Classes,   file_handle)
                 
         else:
-            pickle.dump(self.Predictions, file_handle)
-            pickle.dump(self.Outcomes,    file_handle)   
-            pickle.dump(self.Min_Outcome, file_handle)
-            pickle.dump(self.Max_Outcome, file_handle)
+            pickle.dump(self.f_predictions, file_handle)
+            pickle.dump(self.e_predictions, file_handle)
+            pickle.dump(self.Outcomes,      file_handle)   
+            pickle.dump(self.Min_Outcome,   file_handle)
+            pickle.dump(self.Max_Outcome,   file_handle)
 
 
     def Read_From_File(self, file_handle):
@@ -154,16 +166,18 @@ class Feature_Statistics(object):
         self.Mode           = pickle.load(file_handle)
 
         if self.Mode == 'classification':
-            self.Predictions = pickle.load(file_handle)
-            self.Outcomes    = pickle.load(file_handle)   
-            self.Classes     = pickle.load(file_handle)    
-            self.Num_Classes = pickle.load(file_handle)
+            self.f_predictions = pickle.load(file_handle)
+            self.e_predictions = pickle.load(file_handle)
+            self.Outcomes      = pickle.load(file_handle)   
+            self.Classes       = pickle.load(file_handle)    
+            self.Num_Classes   = pickle.load(file_handle)
                 
         else:
-            self.Predictions  = pickle.load(file_handle)
-            self.Outcomes     = pickle.load(file_handle)   
-            self.Min_Outcome  = pickle.load(file_handle)
-            self.Max_Outcome  = pickle.load(file_handle)
+            self.f_predictions = pickle.load(file_handle)
+            self.e_predictions = pickle.load(file_handle)
+            self.Outcomes      = pickle.load(file_handle)   
+            self.Min_Outcome   = pickle.load(file_handle)
+            self.Max_Outcome   = pickle.load(file_handle)
 
             
     def Feature_Counts(self, max_features=10, scaled=True, threshold=0.075):
@@ -262,9 +276,9 @@ class Feature_Statistics(object):
         
         if display_feature_list:
             if top_features:
-                self.Print_Top_Features()
+                self.Print_Top_Features(0)
             else:
-                self.Print_Features()
+                self.Print_Features(0)
                 
                            
              
@@ -276,14 +290,14 @@ class Feature_Statistics(object):
         if num < 10000: return ''
     
             
-    def Print_Top_Features(self):
+    def Print_Top_Features(self, index_1):
         for feature in range(self.Max_Features):
-            print(feature+1, '- ', self.Padding(feature+1), self.Top_Features[feature])
+            print(feature+index_1, '- ', self.Padding(feature+1), self.Top_Features[feature])
             
             
-    def Print_Features(self):
+    def Print_Features(self, index_1):
         for feature in range(self.Num_Features):
-            print(feature+1, '- ', self.Padding(feature+1), self.Feature_Names[feature])
+            print(feature+index_1, '- ', self.Padding(feature+1), self.Feature_Names[feature])
             
             
     def Violin_Plot(self, top_features=True, showextrema=True):
@@ -302,9 +316,9 @@ class Feature_Statistics(object):
         plt.show()
         
         if top_features:
-            self.Print_Top_Features()
+            self.Print_Top_Features(1)
         else:
-            self.Print_Features()
+            self.Print_Features(1)
             
         
             
@@ -326,9 +340,9 @@ class Feature_Statistics(object):
         plt.show()
         
         if top_features:
-            self.Print_Top_Features()
+            self.Print_Top_Features(1)
         else:
-            self.Print_Features()
+            self.Print_Features(1)
             
      
 
@@ -339,23 +353,23 @@ class Feature_Statistics(object):
         if self.Mode == 'classification': 
             fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 2]})
         
-            predictions = self.Predictions[instance,:].reshape(1, -1).ravel()
+            f_predictions = self.f_predictions[instance,:].reshape(1, -1).ravel()
                         
             title1_info = str(instance) + ' (Outcome: ' + self.Classes[self.Outcomes[instance]] + ')'
 
-            title1 = 'Prediction Probabilities for Instance ' + title1_info
+            title1 = 'f_prediction Probabilities for Instance ' + title1_info
 
 
-            bar_colors1  = []
+            bar_colorffs1  = []
             colour_index = 0
             for index in range(self.Num_Classes):
-                bar_colors1.append(Feature_Statistics.colour_list[colour_index])
+                bar_colorffs1.append(Feature_Statistics.colour_list[colour_index])
                 
                 colour_index += 1
                 if colour_index == Feature_Statistics.colour_max:
                     colour_index = 0
 
-            exp1 = ax1.barh(y = self.Classes, width = predictions, color=bar_colors1)
+            exp1 = ax1.barh(y = self.Classes, width = f_predictions, color=bar_colorffs1)
         
             ax1.bar_label(exp1, label_type='center', fmt='%.4f')
 
@@ -367,12 +381,12 @@ class Feature_Statistics(object):
         
 
         ###################################################################
-        ## for regression plot within the range of predictions the value
+        ## for regression plot within the range of f_predictions the value
         else:
             fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 4]})
             
-            prediction = self.Predictions[instance]
-            prediction = np.array([prediction])
+            f_prediction = self.f_predictions[instance]
+            f_prediction = np.array([f_prediction])
  
             outcome_str = f"{self.Outcomes[instance]:.4f}"
             title1_info = str(instance) + ' (Outcome: ' + outcome_str + ')'
@@ -380,19 +394,19 @@ class Feature_Statistics(object):
             title1 = 'Predicted value for Instance ' + title1_info
 
 
-            if prediction[0] > 0:
-                prediction_colour = 'tab:orange'
+            if f_prediction[0] > 0:
+                f_prediction_colour = 'tab:orange'
             else:
-                prediction_colour = 'tab:blue'
+                f_prediction_colour = 'tab:blue'
             
-            exp1 = ax1.barh(y = [''], width = prediction, color=prediction_colour)
+            exp1 = ax1.barh(y = [''], width = f_prediction, color=f_prediction_colour)
         
             ax1.bar_label(exp1, label_type='center', fmt='%.4f')
 
             ax1.set_xlabel('Range of Predicted Values')
 
-            x_min = np.min(self.Predictions)
-            x_max = np.max(self.Predictions)
+            x_min = np.min(self.f_predictions)
+            x_max = np.max(self.f_predictions)
             ax1.set_xlim(xmin = x_min, xmax = x_max)
 
             ax1.set_title(title1)
@@ -430,14 +444,14 @@ class Feature_Statistics(object):
         
         title2 = 'Explanations from Instance ' + str(instance) 
         
-        bar_colors2 = []
+        bar_colorffs2 = []
         for feature in range(max_features):
             if data_row[feature] > 0:
-                bar_colors2.append('tab:orange')
+                bar_colorffs2.append('tab:orange')
             else:
-                bar_colors2.append('tab:blue')
+                bar_colorffs2.append('tab:blue')
 
-        exp2 = ax2.barh(y = feature_names, width = data_row, color=bar_colors2)
+        exp2 = ax2.barh(y = feature_names, width = data_row, color=bar_colorffs2)
         
         ax2.axvline(0, color='lightgrey', linewidth=0.8)
 
@@ -450,8 +464,129 @@ class Feature_Statistics(object):
 
         fig.tight_layout()
         plt.show()
+
+    def Class_Fidelity_Graph(self):
+               
+        f_predictions = self.f_predictions[:,1]
+        e_predictions = self.e_predictions[:,1]
+
+        sorted_indices = np.argsort(f_predictions)
+
+            
+        fig, ax = plt.subplots()
+
+        plt.scatter(x = np.arange(self.Num_Samples), y = f_predictions[sorted_indices], label = 'BB')
+        plt.scatter(x = np.arange(self.Num_Samples), y = e_predictions[sorted_indices], label = 'Exp')
+        plt.scatter(x = np.arange(self.Num_Samples), y = self.Outcomes[sorted_indices], label = 'Y Test')
+               
+        ax.set_xlabel('Sample')
+        ax.set_ylabel('Model Prediction')
+       
+        ax.set_title('Model Predictions and Outcomes')
         
-              
+        ax.legend()
+        plt.show()
+        
+        
+    def Reg_Fidelity_Graph(self):
+        
+        fig, ax = plt.subplots()
+            
+        plt.scatter(x = self.Outcomes, y = self.f_predictions,      label = 'BB')
+        plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp')
+               
+        ax.set_xlabel('Y Test')
+        ax.set_ylabel('Model Prediction')
+       
+        ax.set_title('Model Predictions vs Y Test')
+        
+        ax.legend()
+        plt.show()
+        
+        
+    def Fidelity(self):
+        
+        if self.Mode == 'classification':
+            self.Class_Fidelity()      
+                     
+        else:
+            self.Reg_Fidelity()
+                     
+            
+    def Class_Fidelity(self):
+        
+        f_e_differences = np.square(self.f_predictions - self.e_predictions)
+
+        f_outcomes = np.argmax(self.f_predictions, axis = 1)
+        e_outcomes = np.argmax(self.e_predictions, axis = 1)
+
+        f_score   = np.mean(self.Outcomes == f_outcomes)
+        e_score   = np.mean(self.Outcomes == e_outcomes)
+        f_e_score = np.mean(f_outcomes    == e_outcomes)
+            
+        print('BB(x) - exp(x) proba dif  Avg: ', np.mean(f_e_differences), ' var: ', np.var(f_e_differences),
+              ' max: ', np.max(f_e_differences))
+            
+        print('Scores:')
+        print('BB Model Score:  ', f_score)
+        print('Exp Model Score: ', e_score)
+        print('BB - Exp Score:  ', f_e_score)
+            
+
+            
+    def Reg_Fidelity(self):
+        
+        exp_predictions = self.e_predictions[:,0]
+        exp_variance    = self.e_predictions[:,1]
+            
+        y_f_differences = np.abs(self.Outcomes - self.f_predictions )
+            
+        y_e_differences = np.abs(self.Outcomes - exp_predictions)
+            
+        f_e_differences = np.abs(self.f_predictions - exp_predictions)
+
+        print('Average, Var, and Max Differences:')
+            
+        print('y - BB(x):          ', np.mean(y_f_differences), ' : ', np.var(y_f_differences),
+              ' : ', np.max(y_f_differences))
+
+        print('y - exp(x):         ', np.mean(y_e_differences), ' : ', np.var(y_e_differences),
+              ' : ', np.max(y_e_differences))
+
+        print('BB(x) - exp(x):     ', np.mean(f_e_differences), ' : ', np.var(f_e_differences),
+              ' : ', np.max(f_e_differences))
+
+        print('Average exp(x) var: ', np.mean(exp_variance))
+                
+
+    def Jaccard_Values(self, top_k=5):
+
+        jaccard_similarities = []
+        jaccard_distances    = []
+        
+        evaluation_pairs = list(combinations(range(self.Num_Samples), 2))
+                                
+        for evaluation_pair in evaluation_pairs:
+                                
+            fs1 = self.Feature_Scores[evaluation_pair[0]]
+            fs2 = self.Feature_Scores[evaluation_pair[1]]
+
+            # Extracting indices of top-k features in both lists
+            fs1 = set(np.argpartition(fs1, -top_k)[-top_k:])
+            fs2 = set(np.argpartition(fs2, -top_k)[-top_k:])
+
+            jaccard_similarity = len(fs1.intersection(fs2)) / len(fs1.union(fs2))
+            jaccard_similarities.append(jaccard_similarity)                                
+                                
+            jaccard_distance = 1 - jaccard_similarity
+            jaccard_distances.append(jaccard_distance)
+
+        
+        print('Mean Jaccard Similarity: ', np.mean(jaccard_similarities))
+        print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
+
+                
+                
     def Group_String(self):
         return 'All Samples'
 
@@ -506,9 +641,9 @@ class Group_Container(object):
     def Frequency_Plot(self, y_max=None, normalised=True, Overlay=False):
 
         if normalised:
-            title = 'Normalised Feature Frequency of Explanations (above threshold ' + str(self.threshold)
+            title = 'Normalised Feature Frequency of Explanations (above threshold ' + str(self.threshold) +')'
         else:
-            title = 'Feature Frequency of Explanations (above threshold ' + str(self.threshold)
+            title = 'Feature Frequency of Explanations (above threshold ' + str(self.threshold) +')'
 
         num_features   = len(self.Stats_List[0].Get_Features())
         summed_bottom = np.zeros([num_features])
@@ -531,7 +666,7 @@ class Group_Container(object):
         ax.legend()
         plt.show()
         
-        self.Stats_List[0].Print_Features()
+        self.Stats_List[0].Print_Features(0)
                 
             
 #############################################################################################
@@ -550,15 +685,15 @@ class Regression_Feature_Statistics(Feature_Statistics):
         self.Label = f"{lower:.2f}" + '-' + f"{upper:.2f}"
          
         
-    def Add_Sample(self, sample, outcome, prediction):
+    def Add_Sample(self, sample, outcome, f_prediction, e_prediction):
         
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_Sample(self, sample, outcome, prediction)
+            Feature_Statistics.Add_Sample(self, sample, outcome, f_prediction, e_prediction)
        
-    def Add_LIME_Sample(self, sample, outcome, prediction):
+    def Add_LIME_Sample(self, sample, outcome, f_prediction, e_prediction):
        
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
+            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, f_prediction, e_prediction)  
      
     def Plot_To_Axis(self, axis, normalised, bottom):
 
@@ -622,21 +757,21 @@ class Class_Feature_Statistics(Feature_Statistics):
             self.Selected_Class = selected_class
             self.Selected_Index = classes.index(selected_class)
         
-    def Add_Sample(self, sample, outcome, prediction):
+    def Add_Sample(self, sample, outcome, f_prediction, e_prediction):
         
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_Sample(self, sample, outcome, prediction)
+            Feature_Statistics.Add_Sample(self, sample, outcome, f_prediction, e_prediction)
        
-    def Add_LIME_Sample(self, sample, outcome, prediction):
+    def Add_LIME_Sample(self, sample, outcome, f_prediction):
        
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, prediction)  
+            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, f_prediction)  
      
     def Plot_To_Axis(self, ax, normalised, bottom):
     
         counts = self.All_Counts
         
-        if normalised:
+        if normalised and self.Num_Samples > 0:
             counts = counts / self.Num_Samples
         
         ax.bar(x = np.arange(self.Num_Features), height = counts, \

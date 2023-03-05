@@ -6,6 +6,7 @@ from unravel.plot_util import plot_scores
 from unravel.kernel_util import Kernel
 from unravel.acquisition_util import FUR_w, FUR, UR, UCB
 
+from copy import deepcopy
 
 class UnRAVELTabularExplainer:
     def __init__(
@@ -189,7 +190,7 @@ class UnRAVELTabularExplainer:
 
         return f_optim
 
-    def generate_scores(self, kernel, f_optim, importance_method="ARD", delta=1):
+    def generate_scores(self, kernel, f_optim, importance_method="ARD", delta=1, feature_names=[]):
         """[summary]
 
         Args:
@@ -203,9 +204,26 @@ class UnRAVELTabularExplainer:
         """
         # Extracting the feature coefficients
         if importance_method == "ARD":
+            
             model_parameters = f_optim.model.get_model_parameters().tolist()[0]
             coefficients = kernel.get_coefficients(model_parameters)
             score = kernel.get_importance_score(coefficients)
+
+#            print('feature_names',feature_names)
+#            print('model_parameters',model_parameters)
+#            print('coefficients',coefficients)
+#            print('score',score)
+#            
+#            if len(feature_names) > 0:                
+#                for i in range(len(feature_names)):
+#                    
+#                    print(feature_names[i], \
+#                          model_parameters[i], \
+#                          coefficients[i], \
+#                          score[i])
+            
+
+            
         elif importance_method == "KL":
             # Storing the surrogate dataset generated through the BO routine
             X_surrogate = f_optim.get_evaluations()[0]
@@ -272,7 +290,7 @@ class UnRAVELTabularExplainer:
         alpha_params=None,
         jitter=5,
         normalize=True,
-        plot=True,
+        plot=False,
         interval=1,
         verbosity=False,
         maximize=False,
@@ -320,12 +338,19 @@ class UnRAVELTabularExplainer:
 
         # Extracting the scores from the coefficients
         scores = self.generate_scores(
-            kernel, f_optim, importance_method=importance_method, delta=delta
+            kernel, f_optim, importance_method=importance_method, delta=delta, feature_names=feature_names
         )
 
+        #scores_copy = deepcopy(scores)
+        
         # Normalizing the scores for getting relative importance
         if normalize:
             scores = scores / np.max(scores)
+            
+        #print(scores)
+        
+        #scores_copy.sort()
+        #print(scores_copy)
 
         # Plotting the scores
         if plot:
@@ -333,3 +358,16 @@ class UnRAVELTabularExplainer:
 
         # Outputting explanations
         return scores
+
+    
+    # a new GP Model is created for each expalined instance so a deepcopy is required if it is to be preserved
+    def get_gpmodel(self):
+    
+        gpmodel = deepcopy(self.gp_model)
+        
+        return gpmodel
+    
+    # obtain a prediction from the current GP model
+    def gpmodel_predict(self, X):
+        return self.gp_model.predict(X)
+    
