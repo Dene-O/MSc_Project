@@ -46,7 +46,7 @@ class Feature_Statistics(object):
 
 
            
-    def Add_Sample(self, sample, outcome, f_prediction, e_prediction=[0,0]):
+    def Add_Sample(self, sample_scores, outcome, f_prediction, e_prediction=[0,0]):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -61,8 +61,8 @@ class Feature_Statistics(object):
             self.Max_Outcome = np.max(self.Outcomes)
             self.Min_Outcome = np.min(self.Outcomes)
         
-        new_row    = np.array(sample, dtype=float)
-        scaled_row = np.array(sample, dtype=float)
+        new_row    = np.array(sample_scores, dtype=float)
+        scaled_row = np.array(sample_scores, dtype=float)
 
         max_score = np.max(abs(new_row))
         if max_score != 0.0:
@@ -75,7 +75,7 @@ class Feature_Statistics(object):
         
         
 
-    def Add_LIME_Sample(self, sample, outcome, f_predictionn, e_prediction=[0,0]):
+    def Add_LIME_Sample(self, sample_scores, outcome, f_predictionn, e_prediction=[0,0]):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -99,7 +99,7 @@ class Feature_Statistics(object):
         scaled_row = np.zeros([self.Num_Features], dtype=float)
 
         
-        for item in sample:
+        for item in sample_scores:
                      
             feature_index = self.Index_Of(item[0])
                 
@@ -685,27 +685,29 @@ class Regression_Feature_Statistics(Feature_Statistics):
         self.Label = f"{lower:.2f}" + '-' + f"{upper:.2f}"
          
         
-    def Add_Sample(self, sample, outcome, f_prediction, e_prediction):
+    def Add_Sample(self, sample_scores, outcome, f_prediction, e_prediction):
         
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_Sample(self, sample, outcome, f_prediction, e_prediction)
+            Feature_Statistics.Add_Sample(self, sample_scores, outcome, f_prediction, e_prediction)
        
-    def Add_LIME_Sample(self, sample, outcome, f_prediction, e_prediction):
+    def Add_LIME_Sample(self, sample_scores, outcome, f_prediction, e_prediction):
        
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, f_prediction, e_prediction)  
+            Feature_Statistics.Add_LIME_Sample(self, sample_scores, outcome, f_prediction, e_prediction)  
      
     def Plot_To_Axis(self, axis, normalised, bottom):
 
-        counts = self.All_Counts
+        if self.Num_Samples > 0:
+            
+            counts = self.All_Counts
         
-        if normalised:
-            counts = counts / self.Num_Samples
+            if normalised:
+                counts = counts / self.Num_Samples
         
-        axis.bar(x = np.arange(self.Num_Features), height = counts, \
-                 label=self.Label, bottom = bottom)
+            axis.bar(x = np.arange(self.Num_Features), height = counts, \
+                     label=self.Label, bottom = bottom)
         
-        bottom = bottom + counts
+            bottom = bottom + counts
         
         return bottom
     
@@ -757,15 +759,15 @@ class Class_Feature_Statistics(Feature_Statistics):
             self.Selected_Class = selected_class
             self.Selected_Index = classes.index(selected_class)
         
-    def Add_Sample(self, sample, outcome, f_prediction, e_prediction):
+    def Add_Sample(self, sample_scores, outcome, f_prediction, e_prediction):
         
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_Sample(self, sample, outcome, f_prediction, e_prediction)
+            Feature_Statistics.Add_Sample(self, sample_scores, outcome, f_prediction, e_prediction)
        
-    def Add_LIME_Sample(self, sample, outcome, f_prediction):
+    def Add_LIME_Sample(self, sample_scores, outcome, f_prediction):
        
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, f_prediction)  
+            Feature_Statistics.Add_LIME_Sample(self, sample_scores, outcome, f_prediction)  
      
     def Plot_To_Axis(self, ax, normalised, bottom):
     
