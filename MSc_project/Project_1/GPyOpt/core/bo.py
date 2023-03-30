@@ -14,6 +14,8 @@ from ..core.errors import InvalidConfigError
 from ..core.task.cost import CostModel
 from ..optimization.acquisition_optimizer import ContextManager
 
+from project_utils.acq_data_capture import Acq_Data
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -57,7 +59,10 @@ class BO(object):
         self.context = None
         self.num_acquisitions = 0
 
+        self.acq_data = Acq_Data()
+
     def suggest_next_locations(self, context = None, pending_X = None, ignored_X = None):
+        #print('suggest_next_locations')
         """
         Run a single optimization step and return the next locations to evaluate the objective.
         Number of suggested locations equals to batch_size.
@@ -76,6 +81,7 @@ class BO(object):
         return suggested_locations
 
     def run_optimization(self, max_iter = 0, max_time = np.inf,  eps = 1e-8, context = None, verbosity=False, save_models_parameters= True, report_file = None, evaluations_file = None, models_file=None):
+        #print('run_optimization')
         """
         Runs Bayesian Optimization for a number 'max_iter' of iterations (after the initial exploration data)
 
@@ -148,12 +154,18 @@ class BO(object):
                 break
 
             self.suggested_sample = self._compute_next_evaluations()
+            #print(self.num_acquisitions, self.suggested_sample)
 
             # --- Augment X
             self.X = np.vstack((self.X,self.suggested_sample))
 
             # --- Evaluate *f* in X, augment Y and update cost function (if needed)
             self.evaluate_objective()
+
+            self.acq_data.new_X(X            = self.suggested_sample,
+                                y            = self.Y_new,
+                                fe_x0        = self.fe_x0,
+                                acq_function = self.acquisition)
 
             # --- Update current evaluation time and function evaluations
             self.cum_time = time.time() - self.time_zero
@@ -173,6 +185,8 @@ class BO(object):
             self.save_evaluations(self.evaluations_file)
         if self.models_file is not None:
             self.save_models(self.models_file)
+
+        return self.acq_data
 
     def _print_convergence(self):
         """
@@ -203,6 +217,8 @@ class BO(object):
         self.cost.update_cost_model(self.suggested_sample, cost_new)
         self.Y = np.vstack((self.Y,self.Y_new))
 
+        self.fe_x0, d_ = self.objective.evaluate(self.X[0].reshape(1,-1))
+
     def _compute_results(self):
         """
         Computes the optimum and its value.
@@ -221,6 +237,7 @@ class BO(object):
         return np.sqrt(np.sum((self.X[-1, :] - self.X[-2, :]) ** 2))
 
     def _compute_next_evaluations(self, pending_zipped_X=None, ignored_zipped_X=None):
+        #print('_compute_next_evaluations')
         """
         Computes the location of the new evaluation (optimizes the acquisition in the standard case).
         :param pending_zipped_X: matrix of input configurations that are in a pending state (i.e., do not have an evaluation yet).

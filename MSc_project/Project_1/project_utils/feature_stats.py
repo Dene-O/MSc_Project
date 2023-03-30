@@ -26,6 +26,8 @@ class Feature_Statistics(object):
             self.Num_Samples    = 0
             self.Feature_Scores = np.empty([0, self.Num_Features], dtype=float)
             self.Scaled_Scores  = np.empty([0, self.Num_Features], dtype=float)
+            self.Features       = np.empty([0, self.Num_Features], dtype=float)
+            self.Exp_Models     = []
         
             if mode == 'classification':
                 self.Mode          = 'classification'
@@ -46,7 +48,7 @@ class Feature_Statistics(object):
 
 
            
-    def Add_Sample(self, sample, outcome, f_prediction, e_prediction=[0,0]):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -61,8 +63,8 @@ class Feature_Statistics(object):
             self.Max_Outcome = np.max(self.Outcomes)
             self.Min_Outcome = np.min(self.Outcomes)
         
-        new_row    = np.array(sample, dtype=float)
-        scaled_row = np.array(sample, dtype=float)
+        new_row    = np.array(sample_scores, dtype=float)
+        scaled_row = np.array(sample_scores, dtype=float)
 
         max_score = np.max(abs(new_row))
         if max_score != 0.0:
@@ -70,12 +72,15 @@ class Feature_Statistics(object):
             
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
+        self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
+        
+        self.Exp_Models.append(model)
 
         self.Num_Samples += 1
         
         
 
-    def Add_LIME_Sample(self, sample, outcome, f_predictionn, e_prediction=[0,0]):
+    def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_predictionn, e_prediction, model):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -94,12 +99,11 @@ class Feature_Statistics(object):
             self.Max_Outcome = np.max(self.Outcomes)
             self.Min_Outcome = np.min(self.Outcomes)
         
-
         new_row    = np.zeros([self.Num_Features], dtype=float)
         scaled_row = np.zeros([self.Num_Features], dtype=float)
 
         
-        for item in sample:
+        for item in sample_scores:
                      
             feature_index = self.Index_Of(item[0])
                 
@@ -112,6 +116,9 @@ class Feature_Statistics(object):
             
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
+        self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
+
+        self.Exp_Models.append(model)
 
         self.Num_Samples += 1
         
@@ -128,8 +135,8 @@ class Feature_Statistics(object):
     def Copy_Rows (self, target):
         
         for row in range(self.Num_Samples):
-            target.Add_Sample(self.Feature_Scores[row], self.Outcomes[row],
-                              self.f_predictions[row],  self.e_predictions[row])
+            target.Add_Sample(self.Feature_Scores[row], self.Features[row],      self.Outcomes[row],
+                              self.f_predictions[row],  self.e_predictions[row], self.Exp_Models[row])
 
 
     def Write_To_File(self, file_handle):
@@ -376,6 +383,7 @@ class Feature_Statistics(object):
             ax1.set_xlabel('Class Probability')
             ax1.set_ylabel('Class Name')
             ax1.set_xlim(xmin = 0, xmax = 1)
+            ax1.set_yticks(ticks=[])
        
             ax1.set_title(title1)
         
@@ -492,8 +500,8 @@ class Feature_Statistics(object):
         
         fig, ax = plt.subplots()
             
-        plt.scatter(x = self.Outcomes, y = self.f_predictions,      label = 'BB')
-        plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp')
+        plt.scatter(x = self.Outcomes, y = self.f_predictions,      label = 'BB',  marker='x')
+        plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='o')
                
         ax.set_xlabel('Y Test')
         ax.set_ylabel('Model Prediction')
@@ -507,6 +515,7 @@ class Feature_Statistics(object):
     def Fidelity(self):
         
         if self.Mode == 'classification':
+
             self.Class_Fidelity()      
                      
         else:
@@ -585,7 +594,53 @@ class Feature_Statistics(object):
         print('Mean Jaccard Similarity: ', np.mean(jaccard_similarities))
         print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
 
-                
+        
+    def Consistancy(self, X_train, sample_select='Latest'):
+        
+        std_range   = 2
+        mid_index   = 2 * std_range
+        index_range = 4 * std_range + 1
+        
+        self.std = np.std(X_train, axis = 0)
+        
+        if sample_select == 'Latest':
+            sample = self.Num_Samples - 1
+        
+        #elif sample_select == 'All':
+        #    sample = 'All'
+            
+        else:
+            sample = sample_select
+
+        x_perturbed = np.empty([self.Num_Features, 2])
+        p_means     = np.empty([index_range])
+        p_std       = np.empty([index_range])
+        
+        p_means[mid_index], p_std[mid_index] = self.Exp_Models[sample].predict(X = self.Features[sample].reshape(1, -1), return_std = True)
+        p,s                                  = self.Exp_Models[sample].predict(X = self.Features[sample].reshape(1, -1), return_std = True)
+        print(p,s,mid_index)
+            
+        for std_x2 in range(1, mid_index + 1):
+            
+            x_perturbed_neg = self.Features[sample] - (std_x2 * self.std / 2)
+            x_perturbed_pos = self.Features[sample] + (std_x2 * self.std / 2)
+            
+            #p_means[mid_index - std_x2], p_std[mid_index - std_x2] = self.Exp_Models[sample].predict(X = x_perturbed_neg.reshape(1, -1), return_std = True)
+            #p_means[mid_index + std_x2], p_std[mid_index + std_x2] = self.Exp_Models[sample].predict(X = x_perturbed_pos.reshape(1, -1), return_std = True)
+
+            p, s = self.Exp_Models[sample].predict(X = x_perturbed_neg.reshape(1, -1), return_std = True)
+            print(p,s,mid_index - std_x2)
+            p_means[mid_index - std_x2] = p
+            p_std[mid_index - std_x2] = s
+            p, s = self.Exp_Models[sample].predict(X = x_perturbed_pos.reshape(1, -1), return_std = True)
+            print(p,s, mid_index + std_x2)
+            p_means[mid_index + std_x2] = p
+            p_std[mid_index + std_x2] = s
+
+        print('SD \t Y pred\t Y var') 
+        for index in range(index_range):
+            print('%.1f:\t %.3f\t %.3f' % ((index-mid_index)/2, p_means[index], p_std[index]))
+
                 
     def Group_String(self):
         return 'All Samples'
@@ -685,27 +740,29 @@ class Regression_Feature_Statistics(Feature_Statistics):
         self.Label = f"{lower:.2f}" + '-' + f"{upper:.2f}"
          
         
-    def Add_Sample(self, sample, outcome, f_prediction, e_prediction):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
         
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_Sample(self, sample, outcome, f_prediction, e_prediction)
+            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)
        
-    def Add_LIME_Sample(self, sample, outcome, f_prediction, e_prediction):
+    def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, f_prediction, e_prediction)  
+            Feature_Statistics.Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)  
      
     def Plot_To_Axis(self, axis, normalised, bottom):
 
-        counts = self.All_Counts
+        if self.Num_Samples > 0:
+            
+            counts = self.All_Counts
         
-        if normalised:
-            counts = counts / self.Num_Samples
+            if normalised:
+                counts = counts / self.Num_Samples
         
-        axis.bar(x = np.arange(self.Num_Features), height = counts, \
-                 label=self.Label, bottom = bottom)
+            axis.bar(x = np.arange(self.Num_Features), height = counts, \
+                     label=self.Label, bottom = bottom)
         
-        bottom = bottom + counts
+            bottom = bottom + counts
         
         return bottom
     
@@ -757,15 +814,15 @@ class Class_Feature_Statistics(Feature_Statistics):
             self.Selected_Class = selected_class
             self.Selected_Index = classes.index(selected_class)
         
-    def Add_Sample(self, sample, outcome, f_prediction, e_prediction):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
         
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_Sample(self, sample, outcome, f_prediction, e_prediction)
+            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)
        
-    def Add_LIME_Sample(self, sample, outcome, f_prediction):
+    def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_LIME_Sample(self, sample, outcome, f_prediction)  
+            Feature_Statistics.Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)  
      
     def Plot_To_Axis(self, ax, normalised, bottom):
     

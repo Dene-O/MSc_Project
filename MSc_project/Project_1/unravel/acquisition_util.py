@@ -2,7 +2,7 @@ import GPyOpt
 import numpy as np
 
 
-class FUR_w(GPyOpt.acquisitions.base.AcquisitionBase):
+class FUR_W(GPyOpt.acquisitions.base.AcquisitionBase):
 
     """
     General template to create a new GPyOPt acquisition function
@@ -33,7 +33,7 @@ class FUR_w(GPyOpt.acquisitions.base.AcquisitionBase):
         else:
             self.weight = weight            
             
-        super(FUR_w, self).__init__(model, space, optimizer)
+        super(FUR_W, self).__init__(model, space, optimizer)
 
     def _compute_acq(self, x):
         if x.shape[0] > 1:

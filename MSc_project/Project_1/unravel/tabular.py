@@ -4,7 +4,7 @@ import GPyOpt
 import numpy as np
 from unravel.plot_util import plot_scores
 from unravel.kernel_util import Kernel
-from unravel.acquisition_util import FUR_w, FUR, UR, UCB
+from unravel.acquisition_util import FUR_W, FUR, UR, UCB
 
 from copy import deepcopy
 
@@ -129,14 +129,14 @@ class UnRAVELTabularExplainer:
         bounds = self.generate_domain(X_init[0], interval=interval)
 
         # Initializing explainer model f_e
-        if alpha == "FUR_w" or alpha == "FUR" or alpha == "UR" or alpha == "LCB_custom":
+        if alpha == "FUR_W" or alpha == "FUR" or alpha == "UR" or alpha == "LCB_custom":
             objective = GPyOpt.core.task.SingleObjective(lambda x: self.f_p(x))
             space = GPyOpt.Design_space(space=bounds)
             model = GPyOpt.models.GPModel(kernel=kernel.kernel, verbose=False)
             aquisition_optimizer = GPyOpt.optimization.AcquisitionOptimizer(space)
 
-            if alpha == "FUR_w":
-                acquisition = FUR_w(
+            if alpha == "FUR_W":
+                acquisition = FUR_W(
                     model,
                     space,
                     optimizer=aquisition_optimizer,
@@ -178,15 +178,17 @@ class UnRAVELTabularExplainer:
                 Y=Y_init,
                 acquisition_jitter=jitter,
                 exact_feval=False,
-                normalize_Y=True,
+                normalize_Y=False,
                 maximize=maximize,
             )
 
         # Running the Bayesian Optimization Routine
-        f_optim.run_optimization(max_iter=max_iter, verbosity=False, eps=-np.inf)
+        self.acq_data = f_optim.run_optimization(max_iter=max_iter, verbosity=False, eps=-np.inf)
+        #f_optim.run_optimization(max_iter=max_iter, verbosity=False, eps=-np.inf)
 
         self.surrogate_data = f_optim.get_evaluations()
         self.gp_model = f_optim.model
+        #print(self.surrogate_data)
 
         return f_optim
 
@@ -227,6 +229,7 @@ class UnRAVELTabularExplainer:
         elif importance_method == "KL":
             # Storing the surrogate dataset generated through the BO routine
             X_surrogate = f_optim.get_evaluations()[0]
+            #print(X_surrogate)
             # y_surrogate = f_e.get_evaluations()[1]
 
             # Storing the GP model trained during the BO routine
@@ -371,3 +374,9 @@ class UnRAVELTabularExplainer:
     def gpmodel_predict(self, X):
         return self.gp_model.predict(X)
     
+    
+    def get_acq_data(self):
+        return self.acq_data
+    
+    def get_surrogate_data(self):
+        return self.surrogate_data

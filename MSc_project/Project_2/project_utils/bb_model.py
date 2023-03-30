@@ -10,10 +10,13 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
+from sklearn.gaussian_process import GaussianProcessRegressor
 
 from sklearn.datasets import make_regression
 from sklearn.datasets import make_classification
 #from sklearn.datasets import load_boston
+
+import matplotlib.pyplot as plt
 
 
 class BB_Model(object):
@@ -133,6 +136,33 @@ class BB_Model(object):
             
                  
             
+        elif dataset == 'Forrester' or dataset == 'forrester':
+        
+            self.mode = 'regression'
+            self.catagorical_features = []
+            
+            n_features = 1
+            
+            X = np.arange(0.0, 1.0, 0.001)
+            self.y = BB_Model.Forrester(X)
+
+            print(X.shape)
+            self.feature_names = ['X']
+            self.outcome = 'Forrester'
+
+            fig, ax = plt.subplots()
+            ax.plot(X, self.y, linewidth=1.0)
+            plt.show()
+                        
+            self.X = np.empty([1000, 1])
+            
+            self.X[:,0] = X
+            
+            print(self.X.shape)
+
+            
+
+            
         else:
             self.mode = mode
 
@@ -167,6 +197,9 @@ class BB_Model(object):
         else:
             return self.data_frame
             
+    @staticmethod        
+    def Forrester(x):
+        return np.square(6.0*x - 2.0)*np.sin(12.0*x - 4.0)
             
     def MPL(self, show_score=True):
     
@@ -215,6 +248,24 @@ class BB_Model(object):
             
         return self.LR_model
     
+    def GP(self, show_score=True):
+    
+        if self.mode == 'regression' or self.mode == 'Regression':
+            self.GP_model = GaussianProcessRegressor()
+            
+        else:
+            self.GP_model = GaussianProcessClassifier()
+            
+        self.GP_model.fit(self.X_train, self.y_train)
+        
+        if show_score:
+            print(self.GP_model.score(self.X_test, self.y_test))
+            
+        return self.GP_model
+    
+    
+    
+    
     
     def get_mode(self):
         return self.mode
@@ -238,7 +289,10 @@ class BB_Model(object):
         return self.RF_model
     
     def get_L_Regression(self, show_score=True):           
-        return self.LR_model
+        return self.LR_model  
+   
+    def get_GP(self, show_score=True):           
+        return self.GP_model
     
    
     
