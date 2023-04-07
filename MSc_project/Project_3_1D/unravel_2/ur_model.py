@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 
 from unravel_2.acquisition_function import FUR_W
 
-from project_utils.acq_data_capture import Acq_Data
+from project_utils.acq_data_capture import Acq_Data_1D
 
 from copy import deepcopy
 
@@ -55,7 +55,7 @@ class UR_Model(object):
         
         self.sampling_optimize = sampling_optimize
           
-        self.acq_data = Acq_Data()
+        self.acq_data = Acq_Data_1D()
 
         
     def BB_predict(self, X):

@@ -1,13 +1,25 @@
 import numpy as np
-
 import matplotlib.pyplot as plt
 
 
 class Acq_Data(object):
+    
+    color_list = ['midnightblue', 'navy', 'darkblue', 'mediumblue', 'blue',                   \
+                  'slateblue', 'mediumslateblue', 'mediumpurple', 'blueviolet', 'darkviolet', \
+                  'mediumvioletred', 'crimson', 'deeppink', 'red', 'magenta']#,                 \
+                  #'coral', 'darkorange', 'orange', 'gold', 'yellow']
 
-    color_list = ['midnightblue', 'navy', 'darkblue', 'mediumblue', 'blue', 'slateblue',    \
-                  'mediumslateblue', 'mediumpurple', 'blueviolet', 'darkviolet', 'magenta', \
-                  'mediumvioletred', 'deeppink', 'crimson', 'red']
+    def __init__(self): pass
+        
+    def new_X(self, X, y, fe_x0, acq_function, t1_t2=False): pass
+
+    def plot_point(self, p=0): pass
+        
+    def plot_all(self): pass
+
+        
+    
+class Acq_Data_1D(Acq_Data):
 
     def __init__(self):
         
@@ -71,7 +83,7 @@ class Acq_Data(object):
         
         
         xrange = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
-        yvals  = Acq_Data.Forrester(xrange)
+        yvals  = Acq_Data_1D.Forrester(xrange)
         
         fig, ax1 = plt.subplots()
         
@@ -104,7 +116,7 @@ class Acq_Data(object):
     def plot_all(self):
         
         xrange = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
-        yvals  = Acq_Data.Forrester(xrange)
+        yvals  = Acq_Data_1D.Forrester(xrange)
        
         fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
         
@@ -118,6 +130,7 @@ class Acq_Data(object):
         for point in range(self.N_points):
             index = int(float(point * len(Acq_Data.color_list)) / self.N_points)
             color = Acq_Data.color_list[index]
+            
             ax2.scatter([self.X_values[point]], [self.y_values[point]], color = color, marker = 'o')
         
             ax1.scatter(x=[point+1], y=[0], color = color, marker = 'o')

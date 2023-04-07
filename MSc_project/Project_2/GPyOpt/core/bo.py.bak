@@ -14,7 +14,7 @@ from ..core.errors import InvalidConfigError
 from ..core.task.cost import CostModel
 from ..optimization.acquisition_optimizer import ContextManager
 
-from project_utils.acq_data_capture import Acq_Data_1D
+from project_utils.acq_data_capture import Acq_Data
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +58,8 @@ class BO(object):
         self.model_parameters_iterations = None
         self.context = None
         self.num_acquisitions = 0
-        
-        self.acq_data = Acq_Data_1D()
+
+        self.acq_data = Acq_Data()
 
     def suggest_next_locations(self, context = None, pending_X = None, ignored_X = None):
         #print('suggest_next_locations')
@@ -165,8 +165,7 @@ class BO(object):
             self.acq_data.new_X(X            = self.suggested_sample,
                                 y            = self.Y_new,
                                 fe_x0        = self.fe_x0,
-                                acq_function = self.acquisition,
-                                t1_t2        = True)
+                                acq_function = self.acquisition)
 
             # --- Update current evaluation time and function evaluations
             self.cum_time = time.time() - self.time_zero
@@ -186,7 +185,7 @@ class BO(object):
             self.save_evaluations(self.evaluations_file)
         if self.models_file is not None:
             self.save_models(self.models_file)
-            
+
         return self.acq_data
 
     def _print_convergence(self):
@@ -217,7 +216,7 @@ class BO(object):
         self.Y_new, cost_new = self.objective.evaluate(self.suggested_sample)
         self.cost.update_cost_model(self.suggested_sample, cost_new)
         self.Y = np.vstack((self.Y,self.Y_new))
-        
+
         self.fe_x0, d_ = self.objective.evaluate(self.X[0].reshape(1,-1))
 
     def _compute_results(self):
