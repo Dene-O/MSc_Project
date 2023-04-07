@@ -16,13 +16,17 @@ class Acq_Data(object):
         self.X_values   = np.empty([0,1])
         self.y_values   = np.empty([0,1])
         self.acq_values = np.empty([0,self.num_acq_points])
+        self.t1         = np.empty([0,self.num_acq_points])
+        self.t2         = np.empty([0,self.num_acq_points])
 
         self.fe_x0 = float("NaN")
 
         self.N_points = 0
-
         
-    def new_X(self, X, y, fe_x0, acq_function):        
+        
+    def new_X(self, X, y, fe_x0, acq_function, t1_t2=False):
+        
+        #print('X ', X)
         
         self.X_values = np.vstack([self.X_values, X.ravel()])
         self.y_values = np.vstack([self.y_values, y.ravel()])
@@ -31,12 +35,23 @@ class Acq_Data(object):
         X_range      = np.empty([self.num_acq_points, 1])
         X_range[:,0] = xrange
         acq_values   = np.empty([self.num_acq_points])
+        t1           = np.empty([self.num_acq_points])
+        t2           = np.empty([self.num_acq_points])
     
-#        acq_values = acq_function._compute_acq(X_range)       
+#        acq_values = acq_function._compute_acq(X_range)
         for i in range(self.num_acq_points):
-            acq_values[i] = acq_function._compute_acq(X_range[i],v=False)
+            if t1_t2:
+                acq_values[i], t1[i], t2[i] = acq_function._compute_acq(X_range[i].reshape(1,-1), return_terms=True)
+                #if i==10 or i==25 or i==50 or i==75 or i==90:
+                #    print('ZZ: ', X_range[i], acq_values[i], t1[i], t2[i], (acq_values[i] - t1[i] - t2[i])) 
+            else:
+                acq_values[i] = acq_function._compute_acq(X_range[i].reshape(1,-1))
+                
+                
         
         self.acq_values = np.vstack([self.acq_values, acq_values])
+        self.t1         = np.vstack([self.t1,         t1])
+        self.t2         = np.vstack([self.t2,         t2])
         
         self.fe_x0 = fe_x0
 
@@ -74,8 +89,12 @@ class Acq_Data(object):
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
         
         ax2.set_ylabel('Acquisition Function')
-        ax2.plot(xrange, self.acq_values[p], color=color)
+        ax2.plot(xrange, self.acq_values[p], color=color,       label='FUR W')
+        ax2.plot(xrange, self.t1[p],         color='lime',      label='T1')
+        ax2.plot(xrange, self.t2[p],         color='darkgreen', label='T2')
         ax2.tick_params(axis='y', labelcolor=color)
+        ax2.legend()
+
 
         fig.tight_layout()
         

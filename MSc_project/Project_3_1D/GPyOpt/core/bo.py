@@ -165,7 +165,8 @@ class BO(object):
             self.acq_data.new_X(X            = self.suggested_sample,
                                 y            = self.Y_new,
                                 fe_x0        = self.fe_x0,
-                                acq_function = self.acquisition)
+                                acq_function = self.acquisition,
+                                t1_t2        = True)
 
             # --- Update current evaluation time and function evaluations
             self.cum_time = time.time() - self.time_zero

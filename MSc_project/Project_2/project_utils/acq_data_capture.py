@@ -34,7 +34,8 @@ class Acq_Data(object):
     
 #        acq_values = acq_function._compute_acq(X_range)       
         for i in range(self.num_acq_points):
-            acq_values[i] = acq_function._compute_acq(X_range[i],v=False)
+            acq_values[i] = acq_function._compute_acq(X_range[i])
+
         
         self.acq_values = np.vstack([self.acq_values, acq_values])
         
