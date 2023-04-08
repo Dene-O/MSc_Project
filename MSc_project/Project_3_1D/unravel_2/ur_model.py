@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 
 from unravel_2.acquisition_function import FUR_W
 
-from project_utils.acq_data_capture import Acq_Data_1D
+from project_utils.acq_data_capture import Acq_Data_nD
 
 from copy import deepcopy
 
@@ -43,6 +43,7 @@ class UR_Model(object):
         self.BB_train_data = train_data
 
         self.feature_names = feature_names
+        self.N_features    = len(feature_names)
 
         #self.categorical_features = categorical_features
         
@@ -55,7 +56,7 @@ class UR_Model(object):
         
         self.sampling_optimize = sampling_optimize
           
-        self.acq_data = Acq_Data_1D()
+        self.acq_data = None
 
         
     def BB_predict(self, X):
@@ -132,6 +133,15 @@ class UR_Model(object):
         self.y_train = np.array(self.y_train)
         
         self.normalize = normalize
+        
+        bounds = np.empty([2,self.N_features])
+        
+        bound[0] = self.init - self.std_x
+        bound[0] = self.init + self.std_x
+        
+        self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model):
+
+
         
         if self.normalize:
         
