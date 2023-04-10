@@ -17,6 +17,7 @@ class Acq_Data(object):
         
     def plot_all(self): pass
 
+
 ###############################################################################################################################        
     
 class Acq_Data_1D(Acq_Data):
@@ -25,9 +26,9 @@ class Acq_Data_1D(Acq_Data):
         
         self.num_acq_points = 100
         
-        xrange       = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
+        self.norm_x_range = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
         self.X_range      = np.empty([self.num_acq_points, 1])
-        self.X_range[:,0] = xrange
+        self.X_range[:,0] = self.norm_x_range
         
         self.X_values   = np.empty([0,1])
         self.y_values   = np.empty([0,1])
@@ -80,8 +81,7 @@ class Acq_Data_1D(Acq_Data):
             return
         
         
-        xrange = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
-        yvals  = Acq_Data_1D.Forrester(xrange)
+        yvals  = Acq_Data_1D.Forrester(self.norm_x_range)
         
         fig, ax1 = plt.subplots()
         
@@ -90,7 +90,7 @@ class Acq_Data_1D(Acq_Data):
         ax1.set_ylabel('y')
         ax1.tick_params(axis='y', labelcolor=color)
         
-        ax1.plot(xrange, yvals, linewidth=1.0, color = color)
+        ax1.plot(self.norm_x_range, yvals, linewidth=1.0, color = color)
         
         color = 'green'
         ax1.scatter([self.X_values[p]], [self.y_values[p]], linewidth=1.0, color = color, marker = 'o')
@@ -99,9 +99,9 @@ class Acq_Data_1D(Acq_Data):
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
         
         ax2.set_ylabel('Acquisition Function')
-        ax2.plot(xrange, self.acq_values[p], color=color,       label='FUR W')
-        ax2.plot(xrange, self.t1[p],         color='lime',      label='T1')
-        ax2.plot(xrange, self.t2[p],         color='darkgreen', label='T2')
+        ax2.plot(self.norm_x_range, self.acq_values[p], color=color,       label='FUR W')
+        ax2.plot(self.norm_x_range, self.t1[p],         color='lime',      label='T1')
+        ax2.plot(self.norm_x_range, self.t2[p],         color='darkgreen', label='T2')
         ax2.tick_params(axis='y', labelcolor=color)
         ax2.legend()
 
@@ -113,31 +113,31 @@ class Acq_Data_1D(Acq_Data):
         
     def plot_all(self):
         
-        xrange = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
-        yvals  = Acq_Data_1D.Forrester(xrange)
+        yvals  = Acq_Data_1D.Forrester(self.norm_x_range)
        
         fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
+        
+        ax1.set_yticks(ticks=[])
+        #ax1.set_xticks(ticks=[0,5,10,15,20])
+        ax1.set_xlim([0, self.N_iter_points+1])
+        ax1.set_xlabel('Iteration Number')
         
         color = 'darkblue'
         ax2.set_xlabel('x')
         ax2.set_ylabel('y')
         ax2.tick_params(axis='y', labelcolor=color)
         
-        ax2.plot(xrange, yvals, linewidth=1.0, color = color)
+        ax2.plot(self.norm_x_range, yvals, linewidth=1.0, color = color)
 
         for point in range(self.N_iter_points):
             
-            index = int(float(point * len(Acq_Data.color_list)) / float(self.N_iter_points))
-            color = Acq_Data.color_list[index]
+            col_idx = int(float(point * len(Acq_Data.color_list)) / float(self.N_iter_points))
+            color   = Acq_Data.color_list[col_idx]
             
             ax2.scatter([self.X_values[point]], [self.y_values[point]], color = color, marker = 'o')
         
             ax1.scatter(x=[point+1], y=[0], color = color, marker = 'o')
             
-        ax1.set_yticks(ticks=[])
-        ax1.set_xticks(ticks=[0,5,10,15,20])
-        ax1.set_xlabel('Iteration Number')
-        
         fig.tight_layout()
 
         plt.show()
@@ -152,21 +152,24 @@ class Acq_Data_nD(object):
 
     def __init__(self, X_Init, bounds, BB_Model=None):
         
-        self.num_acq_points = 200
+        self.num_acq_points   = 300
+        self.normalised_range = 1.5
         
         self.X_Init     = X_Init
         self.N_features = X_Init.size
         self.bounds     = np.array(bounds).reshape(2, self.N_features)
         self.BB_Model   = BB_Model
 
-        xrange = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
+        self.norm_x_range = np.arange(-self.normalised_range, self.normalised_range, \
+                                      2.0 * self.normalised_range /self.num_acq_points)
         
         self.X_range = np.empty([self.num_acq_points, self.N_features])
         
-        bounds_diff = self.bounds[1,:] - self.bounds[0,:]
+        self.bounds_range = (self.bounds[1,:] - self.bounds[0,:]) / 2.0
+        self.bounds_mean  = (self.bounds[0,:] + self.bounds[1,:]) / 2.0
         
-        for i, x in enumerate(xrange):
-            self.X_range[i,:] = bounds_diff * x + self.bounds[0,:]
+        for idx, xval in enumerate(self.norm_x_range):
+            self.X_range[idx,:] = self.bounds_mean + xval * self.bounds_range
             
         self.X_values   = np.empty([0,self.N_features])
         self.y_values   = np.empty([0,1])
@@ -177,6 +180,8 @@ class Acq_Data_nD(object):
         self.fe_x0 = float("NaN")
 
         self.N_iter_points = 0
+        
+        
         
         
     def new_X(self, X, y, fe_x0, acq_function, t1_t2=False):
@@ -206,17 +211,111 @@ class Acq_Data_nD(object):
         self.N_iter_points = self.N_iter_points + 1
 
         
-    def BB_model_prediction(x):
-        return self.BB_Model.predict(x)
+    def Add_BB_model(self, BB_Model):
+        self.BB_Model = BB_Model
             
 
+    def BB_model_prediction(self, x):
+        return self.BB_Model.predict(x)
+    
+    def Normalise_X(self, X):
+        return np.mean((X - self.bounds_mean) / self.bounds_range)
+            
+
+    def Create_BB_plot(self):
+        
+        self.BB_predictions = np.empty([self.num_acq_points])
+
+        for idx in range(self.num_acq_points):
+            self.BB_predictions[idx] = self.BB_Model.predict(self.X_range[idx].reshape(1,-1))
+            #print(self.X_range[idx], ' < X y > ', self.BB_predictions[idx])
+
+
+    def Add_BB_plot(self, ax, color):
+      
+        ax.plot(self.norm_x_range, self.BB_predictions, linewidth=1.0, color = color)        
+
     def plot_point(self, p=0):
-        return
+
+        if p < 0 or p >= self.N_iter_points:
+            print("Out of Range Point")
+            return
+        
+        fig, ax1 = plt.subplots()
+      
+        color = 'darkblue'
+        
+        ax1.set_xlabel('X - Normalised Average')
+        ax1.set_xlim([-1.05 * self.normalised_range, 1.05 * self.normalised_range])
+        #ax1.set_xticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+        ax1.set_ylabel('F(X)  - Black Box Model')
+        ax1.tick_params(axis='y', labelcolor=color)
+
+        self.Add_BB_plot(ax = ax1, color = color)
+        
+        normalised_X = self.Normalise_X(self.X_values[p])
+        color = 'green'
+        ax1.scatter([normalised_X], [self.y_values[p]], linewidth=1.0, color = color, marker = 'o')
+       
+        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        
+
+        color = 'red'
+        ax2.tick_params(axis='y', labelcolor=color)
+        ax2.set_ylabel('Acquisition Function')
+        ax2.plot(self.norm_x_range, self.acq_values[p], color=color,       label='FUR W')
+        ax2.plot(self.norm_x_range, self.t1[p],         color='lime',      label='T1')
+        ax2.plot(self.norm_x_range, self.t2[p],         color='darkgreen', label='T2')
+        ax2.legend()
+
+
+        fig.tight_layout()
+        
+        plt.show()
+                        
+        
         
     def plot_all(self):
-        return
-    
+               
+        fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
+              
+        ax1.set_yticks(ticks=[])
+        ax1.set_xlim([0, self.N_iter_points+1])
+        #ax1.set_xticks(ticks=[0,5,10,15,20])
+        ax1.set_xlabel('Iteration Number')
+        
+        color = 'darkblue'        
+        
+        ax2.set_xlabel('X - Normalised Average')
+        ax2.set_xlim([-1.05 * self.normalised_range, 1.05 * self.normalised_range])
+        #ax2.set_xticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+        ax2.set_ylabel('F(X) - Black Box Model')
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        self.Add_BB_plot(ax = ax2, color = color)
+
+        for point in range(self.N_iter_points):
+            
+            col_idx = int(float(point * len(Acq_Data.color_list)) / float(self.N_iter_points))
+            color   = Acq_Data.color_list[col_idx]
+            
+            normalised_X = self.Normalise_X(self.X_values[point])
+            ax2.scatter([normalised_X], [self.y_values[point]], color = color, marker = 'o')
+        
+            ax1.scatter(x=[point+1], y=[0], color = color, marker = 'o')
+            
+        fig.tight_layout()
+
+        plt.show()
+                            
     
     def get_fe_x0(self):
         return self.fe_x0
 
+
+    # for debug
+    def get_X_BB(self):
+    
+        return self.BB_predictions, self.X_range
+
+        

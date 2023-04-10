@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 
 from unravel_2.acquisition_function import FUR_W
 
+from project_utils.acq_data_capture import Acq_Data_1D
 from project_utils.acq_data_capture import Acq_Data_nD
 
 from copy import deepcopy
@@ -56,6 +57,7 @@ class UR_Model(object):
         
         self.sampling_optimize = sampling_optimize
           
+        # 
         self.acq_data = None
 
         
@@ -107,8 +109,10 @@ class UR_Model(object):
         return gpr
     
     
+    
     def explain(self,
                 X_init,
+                One_D,
                 kernel_type="RBF",
                 max_iter=20,
                 alpha="FUR_W",
@@ -118,7 +122,7 @@ class UR_Model(object):
                 interval=1,
                 #verbosity=False,
                 #maximize=False
-               ):
+                ):
 
         n_samples = 20
         
@@ -136,10 +140,13 @@ class UR_Model(object):
         
         bounds = np.empty([2,self.N_features])
         
-        bound[0] = self.init - self.std_x
-        bound[0] = self.init + self.std_x
+        bounds[0,:] = self.X_init - self.std_x
+        bounds[1,:] = self.X_init + self.std_x
         
-        self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model):
+        if One_D:
+            self.acq_data = Acq_Data_1D()
+        else:
+            self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
 
 
         

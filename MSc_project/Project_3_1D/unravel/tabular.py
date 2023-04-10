@@ -6,6 +6,9 @@ from unravel.plot_util import plot_scores
 from unravel.kernel_util import Kernel
 from unravel.acquisition_util import FUR_W, FUR, UR, UCB
 
+from project_utils.acq_data_capture import Acq_Data_1D
+from project_utils.acq_data_capture import Acq_Data_nD
+
 from copy import deepcopy
 
 class UnRAVELTabularExplainer:
@@ -184,7 +187,11 @@ class UnRAVELTabularExplainer:
 
         # Running the Bayesian Optimization Routine
         self.acq_data = f_optim.run_optimization(max_iter=max_iter, verbosity=False, eps=-np.inf)
-        #f_optim.run_optimization(max_iter=max_iter, verbosity=False, eps=-np.inf)
+        
+        # now returns ACQ Data f_optim.run_optimization(max_iter=max_iter, verbosity=False, eps=-np.inf)
+        
+        if isinstance(self.acq_data, Acq_Data_nD):
+            self.acq_data.Add_BB_model(self.bbox_model)
 
         self.surrogate_data = f_optim.get_evaluations()
         self.gp_model = f_optim.model

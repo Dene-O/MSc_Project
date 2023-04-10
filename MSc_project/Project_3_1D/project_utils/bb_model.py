@@ -30,6 +30,7 @@ class BB_Model(object):
                  classes=None,
                  train_size=0.80,
                  N_samples=500,
+                 Feature_Counts=[],
                  random_state=None):
 
         self.data_frame = None
@@ -83,8 +84,8 @@ class BB_Model(object):
             self.mode = 'classification'
             self.catagorical_features = []
             
-            n_features    = 10
-            n_informative = 5
+            n_features    = Feature_Counts[0]
+            n_informative = Feature_Counts[1]
             
             self.X, self.y = make_classification(n_samples     = N_samples,
                                                  n_features    = n_features,
@@ -100,8 +101,8 @@ class BB_Model(object):
             self.mode = 'regression'
             self.catagorical_features = []
             
-            n_features    = 10
-            n_informative = 5
+            n_features    = Feature_Counts[0]
+            n_informative = Feature_Counts[1]
             
             self.X, self.y, coeffs = make_regression(n_samples     = N_samples,
                                                      n_features    = n_features,
@@ -143,7 +144,8 @@ class BB_Model(object):
             
             n_features = 1
             
-            X = np.arange(0.0, 1.0, 0.001)
+            X = np.arange(-0.05, 0.95, 0.001)
+#            X = np.arange(0.28, 0.52, 0.001)
             self.y = BB_Model.Forrester(X)
 
             print(X.shape)
@@ -155,6 +157,7 @@ class BB_Model(object):
             plt.show()
                         
             self.X = np.empty([1000, 1])
+#            self.X = np.empty([240, 1])
             
             self.X[:,0] = X
             
