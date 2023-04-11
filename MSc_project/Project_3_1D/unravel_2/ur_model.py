@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from unravel_2.acquisition_function import FUR_W
 
 from project_utils.acq_data_capture import Acq_Data_1D
+from project_utils.acq_data_capture import Acq_Data_2D
 from project_utils.acq_data_capture import Acq_Data_nD
 
 from copy import deepcopy
@@ -112,7 +113,7 @@ class UR_Model(object):
     
     def explain(self,
                 X_init,
-                One_D,
+                Dimension='Multi D',
                 kernel_type="RBF",
                 max_iter=20,
                 alpha="FUR_W",
@@ -143,8 +144,10 @@ class UR_Model(object):
         bounds[0,:] = self.X_init - self.std_x
         bounds[1,:] = self.X_init + self.std_x
         
-        if One_D:
+        if Dimension == 'One':
             self.acq_data = Acq_Data_1D()
+        if Dimension == 'Two':
+            self.acq_data = Acq_Data_2D()
         else:
             self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
 

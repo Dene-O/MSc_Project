@@ -19,6 +19,7 @@ from sklearn.datasets import make_classification
 import matplotlib.pyplot as plt
 
 
+
 class BB_Model(object):
 
     def __init__(self,
@@ -103,6 +104,7 @@ class BB_Model(object):
             
             n_features    = Feature_Counts[0]
             n_informative = Feature_Counts[1]
+            n_passive     = n_features - n_informative
             
             self.X, self.y, coeffs = make_regression(n_samples     = N_samples,
                                                      n_features    = n_features,
@@ -114,14 +116,20 @@ class BB_Model(object):
  
             feature_names = []
     
-            for feature in range(n_features - n_informative):                
+            for feature in range(n_passive):                
                 feature_names.append('Passive_' + str(feature))
                 
-            for feature in range(n_informative, n_features):                
+            print(feature_names)
+                
+            for feature in range(n_passive, n_features):                
                 feature_names.append('Active_' + str(feature))
 
+            print(feature_names)
+                            
             coeff_order = np.argsort(coeffs)
 
+            print('Coeffs and Order: ',coeffs, coeff_order)
+                
             self.feature_names = []
             for feature_index in range(n_features):       
                 for coeff_index in range(n_features):
@@ -164,6 +172,51 @@ class BB_Model(object):
             print(self.X.shape)
 
             
+        elif dataset == 'Forrester_2D' or dataset == 'forrester_2d':
+        
+            self.mode = 'regression'
+            self.catagorical_features = []
+            
+            n_features = 2
+            N_x1       = 10
+            N_x2       = 10
+            N_x_all    = N_x1 * N_x2
+            
+            x1_range = np.arange(0.0, 1.0, 1.0/N_x1)
+            x2_range = np.arange(0.0, 1.0, 1.0/N_x2)
+
+            self.X      = np.empty([N_x_all, 2])
+            self.y      = np.empty (N_x_all)
+            self.y_plot = np.empty([N_x1, N_x2])
+            
+            idx = 0
+            for idx1 in range(N_x1):
+                for idx2 in range(N_x2):
+                    
+                    self.X[idx, 0] = x1_range[idx1]
+                    self.X[idx, 1] = x2_range[idx2]                    
+                    self.y[idx]    = BB_Model.Forrester_2D(self.X[idx,:])
+                    idx += 1
+            
+
+            print('X shape',self.X.shape)
+            print('y shape',self.y.shape)
+
+            self.feature_names = ['X1', 'X2']
+            self.outcome = 'Forrester 2D'
+            
+            
+            X1, X2 = np.meshgrid(x1_range, x2_range)
+            
+            Z = BB_Model.Forrester(X1) + BB_Model.Forrester(X2)
+
+            fig, ax = plt.subplots()
+            
+            ax.contour(X1, X2, Z)
+            
+            plt.show()
+                                   
+            
 
             
         else:
@@ -203,6 +256,10 @@ class BB_Model(object):
     @staticmethod        
     def Forrester(x):
         return np.square(6.0*x - 2.0)*np.sin(12.0*x - 4.0)
+            
+    @staticmethod        
+    def Forrester_2D(X):
+        return BB_Model.Forrester(X[0]) + BB_Model.Forrester(X[1]) 
             
     def MPL(self, show_score=True):
     
