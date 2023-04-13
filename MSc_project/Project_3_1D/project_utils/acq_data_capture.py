@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from project_utils.bb_model import BB_Model
+
 
 class Acq_Data(object):
     
@@ -150,18 +152,40 @@ class Acq_Data_1D(Acq_Data):
 class Acq_Data_2D(Acq_Data):
 
     def __init__(self):
+
+        ## START MATCH BB MODEL ##
         
-        self.num_acq_points = 100
+        n_features   = 2
+        self.N_x1    = 100
+        self.N_x2    = 100
+        self.N_x_all = self.N_x1 * self.N_x2
         
-        self.norm_x_range = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
-        self.X_range      = np.empty([self.num_acq_points, 1])
-        self.X_range[:,0] = self.norm_x_range
+        x1_range = np.arange(0.0, 1.0, 1.0/self.N_x1)
+        x2_range = np.arange(0.0, 1.0, 1.0/self.N_x2)
+
+        self.X      = np.empty([self.N_x_all, n_features])
+        self.y      = np.empty (self.N_x_all)
+        self.y_plot = np.empty([self.N_x1, self.N_x2])
         
-        self.X_values   = np.empty([0,1])
-        self.y_values   = np.empty([0,1])
-        self.acq_values = np.empty([0,self.num_acq_points])
-        self.t1         = np.empty([0,self.num_acq_points])
-        self.t2         = np.empty([0,self.num_acq_points])
+        idx = 0
+        for idx1 in range(self.N_x1):
+            for idx2 in range(self.N_x2):
+                
+                self.X[idx, 0] = x1_range[idx1]
+                self.X[idx, 1] = x2_range[idx2]                
+                self.y[idx]    = BB_Model.Forrester_2D(self.X[idx,:])
+                idx += 1
+               
+            
+        self.X1, self.X2 = np.meshgrid(x1_range, x2_range)
+        
+        ## END MATCH BB MODEL ##
+        
+        self.X_values   = np.empty([0, n_features])
+        self.y_values   = np.empty([0, 1])
+        self.acq_values = np.empty([0, self.N_x1, self.N_x2])
+        self.t1         = np.empty([0, self.N_x1, self.N_x2])
+        self.t2         = np.empty([0, self.N_x1, self.N_x2])
 
         self.fe_x0 = float("NaN")
 
@@ -169,102 +193,100 @@ class Acq_Data_2D(Acq_Data):
         
         
     def new_X(self, X, y, fe_x0, acq_function, t1_t2=False):
-        return
-        #print('X ', X)
+
+        print('X ', X)
         
         self.X_values = np.vstack([self.X_values, X.ravel()])
         self.y_values = np.vstack([self.y_values, y.ravel()])
         
-        acq_values   = np.empty([self.num_acq_points])
-        t1           = np.empty([self.num_acq_points])
-        t2           = np.empty([self.num_acq_points])
+        acq_values   = np.empty([self.N_x1, self.N_x2])
+        t1           = np.empty([self.N_x1, self.N_x2])
+        t2           = np.empty([self.N_x1, self.N_x2])
     
-        for i in range(self.num_acq_points):
-            if t1_t2:
-                acq_values[i], t1[i], t2[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1), return_terms=True)
-            else:
-                acq_values[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1))
+        for idx1 in range(self.N_x1):
+            for idx2 in range(self.N_x2):
+                if t1_t2:
+                    acq_values[idx1, idx2], t1[idx1, idx2], t2[idx1, idx2] = acq_function._compute_acq(self.X[self.N_x2 * idx1 + idx2].reshape(1,-1), return_terms=True)
+                else:
+                    acq_values[idx1, idx2] = acq_function._compute_acq(self.X_range[self.N_x2 * idx1 + idx2].reshape(1,-1))
                 
-                
+      
+        self.acq_values = np.vstack([self.acq_values, acq_values.reshape(1, self.N_x1, self.N_x2)])
+        self.t1         = np.vstack([self.t1,                 t1.reshape(1, self.N_x1, self.N_x2)])
+        self.t2         = np.vstack([self.t2,                 t2.reshape(1, self.N_x1, self.N_x2)])
         
-        self.acq_values = np.vstack([self.acq_values, acq_values])
-        self.t1         = np.vstack([self.t1,         t1])
-        self.t2         = np.vstack([self.t2,         t2])
-        
+        print('acq_values', self.acq_values.shape, acq_values.shape)       
+
         self.fe_x0 = fe_x0
 
         
         self.N_iter_points = self.N_iter_points + 1
 
         
-    @staticmethod        
-    def Forrester(x):
-        return np.square(6.0*x - 2.0)*np.sin(12.0*x - 4.0)
             
     def plot_point(self, p=0):
-        return
         
         if p < 0 or p >= self.N_iter_points:
             print("Out of Range Point")
             return
         
-        
-        yvals  = Acq_Data_1D.Forrester(self.norm_x_range)
-        
-        fig, ax1 = plt.subplots()
-        
-        color = 'darkblue'
-        ax1.set_xlabel('x')
-        ax1.set_ylabel('y')
-        ax1.tick_params(axis='y', labelcolor=color)
-        
-        ax1.plot(self.norm_x_range, yvals, linewidth=1.0, color = color)
-        
-        color = 'green'
-        ax1.scatter([self.X_values[p]], [self.y_values[p]], linewidth=1.0, color = color, marker = 'o')
+              
+        fig, axs = plt.subplots(2,2)
         
         color = 'red'
-        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        for idx1 in range(2):
+            for idx2 in range(2):
+                axs[idx1,idx2].scatter([self.X_values[p,0]], [self.X_values[p,1]], color = color, marker = 'D')
+
+        ticks_0_1 = [0.00, 0.25, 0.50, 0.75, 1.00]
         
-        ax2.set_ylabel('Acquisition Function')
-        ax2.plot(self.norm_x_range, self.acq_values[p], color=color,       label='FUR W')
-        ax2.plot(self.norm_x_range, self.t1[p],         color='lime',      label='T1')
-        ax2.plot(self.norm_x_range, self.t2[p],         color='darkgreen', label='T2')
-        ax2.tick_params(axis='y', labelcolor=color)
-        ax2.legend()
-
-
+        self.BB_model.Forrester_plot_2D(axs[0,0], 6)
+        
+        axs[0,0].set_xticks(ticks=[])
+        axs[0,0].set_yticks(ticks=ticks_0_1)
+            
+        contours = axs[0,1].contour(self.X1, self.X2, self.acq_values[p], levels = 10)
+        axs[0,1].clabel(contours, inline=True, fontsize=10)
+        axs[0,1].set_xticks(ticks=[])
+        axs[0,1].set_yticks(ticks=[])
+            
+        contours = axs[1,0].contour(self.X1, self.X2, self.t1[p], levels = 10)
+        axs[1,0].clabel(contours, inline=True, fontsize=10)
+        axs[1,0].set_xticks(ticks=ticks_0_1)
+        axs[1,0].set_yticks(ticks=ticks_0_1)
+            
+        contours = axs[1,1].contour(self.X1, self.X2, self.t2[p], levels = 10)
+        axs[1,1].clabel(contours, inline=True, fontsize=10)
+        axs[1,1].set_xticks(ticks=ticks_0_1)
+        axs[1,1].set_yticks(ticks=[])
+            
         fig.tight_layout()
         
         plt.show()
                         
         
     def plot_all(self):
-        return
-        yvals  = Acq_Data_1D.Forrester(self.norm_x_range)
-       
         fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
-        
+
+        ticks_0_1 = [0.00, 0.25, 0.50, 0.75, 1.00]
+
         ax1.set_yticks(ticks=[])
         #ax1.set_xticks(ticks=[0,5,10,15,20])
         ax1.set_xlim([0, self.N_iter_points+1])
         ax1.set_xlabel('Iteration Number')
         
-        color = 'darkblue'
-        ax2.set_xlabel('x')
-        ax2.set_ylabel('y')
-        ax2.tick_params(axis='y', labelcolor=color)
-        
-        ax2.plot(self.norm_x_range, yvals, linewidth=1.0, color = color)
+        ax2.set_xticks(ticks=ticks_0_1)
+        ax2.set_yticks(ticks=ticks_0_1)
+        self.BB_model.Forrester_plot_2D(ax2, 8)
 
         for point in range(self.N_iter_points):
             
             col_idx = int(float(point * len(Acq_Data.color_list)) / float(self.N_iter_points))
             color   = Acq_Data.color_list[col_idx]
             
-            ax2.scatter([self.X_values[point]], [self.y_values[point]], color = color, marker = 'o')
-        
             ax1.scatter(x=[point+1], y=[0], color = color, marker = 'o')
+            ax2.scatter([self.X_values[point,0]], [self.X_values[point,1]], color = color, marker = 'o')
+        
             
         fig.tight_layout()
 
@@ -272,6 +294,9 @@ class Acq_Data_2D(Acq_Data):
                         
     def get_fe_x0(self):
         return self.fe_x0
+
+    def Add_BB_model(self, BB_model):
+        self.BB_model = BB_model
 
 ###############################################################################################################################
 
