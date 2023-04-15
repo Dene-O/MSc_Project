@@ -130,7 +130,7 @@ class FUR_W(Acq_Base):
             
         self.X_next = self.X_next.reshape(1,-1)
             
-        print('NEXT X: ', self.X_next)
+        #print('NEXT X: ', self.X_next)
         return self.X_next
             
         

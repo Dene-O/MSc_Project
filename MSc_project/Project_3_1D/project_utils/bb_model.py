@@ -124,16 +124,14 @@ class BB_Model(object):
             for feature in range(n_passive):                
                 feature_names.append('Passive_' + str(feature))
                 
-            print(feature_names)
-                
+               
             for feature in range(n_passive, n_features):                
                 feature_names.append('Active_' + str(feature))
 
-            print(feature_names)
-                            
+                           
             coeff_order = np.argsort(coeffs)
 
-            print('Coeffs and Order: ',coeffs, coeff_order)
+            #print('Coeffs and Order: ',coeffs, coeff_order)
                 
             self.feature_names = []
             for feature_index in range(n_features):       
@@ -142,9 +140,9 @@ class BB_Model(object):
                         self.feature_names.append(feature_names[coeff_index])
                         break
             
-            print(self.feature_names)
-            print(coeff_order)
-            print(coeffs)
+            #print('Features:    ', self.feature_names)
+            #print('Coeff Order: ', coeff_order)
+            #print('Coeffs:      ', coeffs)
             
             self.outcome = 'Y_Value'
             
@@ -194,7 +192,7 @@ class BB_Model(object):
 
             self.X      = np.empty([N_x_all, n_features])
             self.y      = np.empty (N_x_all)
-            self.y_plot = np.empty([N_x1, N_x2])
+            #self.y_plot = np.empty([N_x1, N_x2])
             
             idx = 0
             for idx1 in range(N_x1):
@@ -237,44 +235,39 @@ class BB_Model(object):
             N_x2       = 100
             N_x_all    = N_x1 * N_x2
             
-            x1, y1, coeffs1 = make_regression(n_samples     = N_x1,
-                                              n_features    = 1,
-                                              n_informative = 1,
-                                              n_targets     = 1,
-                                              noise         = 1.0,
-                                              coef          = True)
-
-            x2, y2, coeffs2 = make_regression(n_samples     = N_x2,
-                                              n_features    = 1,
-                                              n_informative = 1,
-                                              n_targets     = 1,
-                                              noise         = 1.0,
-                                              coef          = True)
-
-            x1_order = np.argsort(x1)
-            x2_order = np.argsort(x2)
+            x1_range = np.arange(0, 10.0, 10.0/N_x1)
+            x2_range = np.arange(1, 20.0, 19.0/N_x2)
             
-            x1 = x1[x1_order]
-            x1 = y1[x1_order]
-            x2 = x2[x2_order]
-            y2 = y2[x2_order]
+            y1 = np.empty(N_x1)
+            y2 = np.empty(N_x2)
 
-            self.X      = np.empty([N_x_all, n_features])
-            self.y      = np.empty (N_x_all)
-            self.y_plot = np.empty([N_x1, N_x2])
+            for idx, x1 in enumerate(x1_range):
+                y1[idx] = 12 - (x1-3)*(x1-3)
+
+            for idx, x2 in enumerate(x2_range):
+                y2[idx] = 2 * x2 + 8 * np.sin(2 * x2) / x2
             
-            self.X1, self.X2 = np.meshgrid(x1, x2)
+            #print('x1_range: ', np.mean(x1_range), np.std(x1_range))
+            #print('Y1: ', np.mean(y1), np.std(y1))
+            #print('x2_range: ', np.mean(x2_range), np.std(x2_range))
+            #print('Y2: ', np.mean(y2), np.std(y2))
+            
+            self.X = np.empty([N_x_all, n_features])
+            self.y = np.empty (N_x_all)
+            self.Z = np.empty([N_x1, N_x2])
+            
+            self.X1, self.X2 = np.meshgrid(x1_range, x2_range)
             
             idx = 0
             for idx1 in range(N_x1):
                 for idx2 in range(N_x2):
                     
-                    self.X[idx, 0] = x1[idx1]
-                    self.X[idx, 1] = x2[idx2]  
+                    self.X[idx, 0] = x1_range[idx1]
+                    self.X[idx, 1] = x2_range[idx2]  
                     
-                    self.y[idx] = y1[idx1] * y2[idx2]
+                    self.y[idx] = y1[idx1] + y2[idx2]
                     
-                    self.Z[idx1, idx2] = y1[idx1] * y2[idx2]
+                    self.Z[idx1, idx2] = y1[idx1] + y2[idx2]
                            
                     idx += 1
             
@@ -285,9 +278,14 @@ class BB_Model(object):
             self.feature_names = ['X1', 'X2']
             self.outcome = 'Regression 2D'
             
+            
+            #fig, (ax1, ax2) = plt.subplots(2, 1)
+            #ax1.plot(x1,y1)
+            #ax2.plot(x2,y2)
+            
             fig, ax = plt.subplots()
             
-            contours = ax.contour(self.X1, self.X2, self.Z, levels = 8)
+            contours = ax.contour(self.X1, self.X2, self.Z)
             ax.clabel(contours, inline=True, fontsize=10)
             
             plt.show()
@@ -343,18 +341,18 @@ class BB_Model(object):
         return BB_Model.Forrester(X[0]) + BB_Model.Forrester(X[1]) 
             
     ####################################################################################################################
-    def Forrester_plot_2D(self, ax, levels):
+    def Forrester_plot_2D(self, ax, levels, fontsize):
         
         contours = ax.contour(self.X1, self.X2, self.Z, levels = levels)
-        ax.clabel(contours, inline=True, fontsize=6)
+        ax.clabel(contours, inline=True, fontsize = fontsize)
             
             
             
     ####################################################################################################################
-    def Two_D_plot(self, ax, levels):
+    def Two_D_plot(self, ax, levels, fontsize):
         
         contours = ax.contour(self.X1, self.X2, self.Z, levels = levels)
-        ax.clabel(contours, inline=True, fontsize=6)
+        ax.clabel(contours, inline=True, fontsize = fontsize)
             
             
             

@@ -155,13 +155,14 @@ class Acq_Data_2D(Acq_Data):
 
         ## START MATCH BB MODEL ##
         
-        n_features   = 2
-        self.N_x1    = 100
-        self.N_x2    = 100
-        self.N_x_all = self.N_x1 * self.N_x2
-        
-        x1_range = np.arange(0.0, 1.0, 1.0/self.N_x1)
-        x2_range = np.arange(0.0, 1.0, 1.0/self.N_x2)
+        n_features = 2
+        self.N_x1       = 100
+        self.N_x2       = 100
+        self.N_x_all    = self.N_x1 * self.N_x2
+            
+        x1_range = np.arange(0, 10.0, 10.0/self.N_x1)
+        x2_range = np.arange(1, 20.0, 19.0/self.N_x2)
+            
 
         self.X      = np.empty([self.N_x_all, n_features])
         self.y      = np.empty (self.N_x_all)
@@ -173,7 +174,6 @@ class Acq_Data_2D(Acq_Data):
                 
                 self.X[idx, 0] = x1_range[idx1]
                 self.X[idx, 1] = x2_range[idx2]                
-                self.y[idx]    = BB_Model.Forrester_2D(self.X[idx,:])
                 idx += 1
                
             
@@ -194,7 +194,7 @@ class Acq_Data_2D(Acq_Data):
         
     def new_X(self, X, y, fe_x0, acq_function, t1_t2=False):
 
-        print('X ', X)
+        #print('X ', X)
         
         self.X_values = np.vstack([self.X_values, X.ravel()])
         self.y_values = np.vstack([self.y_values, y.ravel()])
@@ -215,7 +215,7 @@ class Acq_Data_2D(Acq_Data):
         self.t1         = np.vstack([self.t1,                 t1.reshape(1, self.N_x1, self.N_x2)])
         self.t2         = np.vstack([self.t2,                 t2.reshape(1, self.N_x1, self.N_x2)])
         
-        print('acq_values', self.acq_values.shape, acq_values.shape)       
+        #print('acq_values', self.acq_values.shape, acq_values.shape)       
 
         self.fe_x0 = fe_x0
 
@@ -224,41 +224,51 @@ class Acq_Data_2D(Acq_Data):
 
         
             
-    def plot_point(self, p=0):
+    def plot_point(self, point, plot_4=False):
         
-        if p < 0 or p >= self.N_iter_points:
+        if point < 0 or point >= self.N_iter_points:
             print("Out of Range Point")
             return
         
-              
-        fig, axs = plt.subplots(2,2)
-        
-        color = 'red'
-        for idx1 in range(2):
-            for idx2 in range(2):
-                axs[idx1,idx2].scatter([self.X_values[p,0]], [self.X_values[p,1]], color = color, marker = 'D')
 
-        ticks_0_1 = [0.00, 0.25, 0.50, 0.75, 1.00]
+        if plot_4:
+            fig, axs = plt.subplots(2,2)
         
-        self.BB_model.Forrester_plot_2D(axs[0,0], 6)
+            color = 'red'
+            for idx1 in range(2):
+                for idx2 in range(2):
+                    axs[idx1,idx2].scatter([self.X_values[point,0]], [self.X_values[point,1]], color = color, marker = 'D')
+                    axs[idx1,idx2].set_xlim(0, 10.0)
+                    axs[idx1,idx2].set_ylim(0, 20.0)
+
         
-        axs[0,0].set_xticks(ticks=[])
-        axs[0,0].set_yticks(ticks=ticks_0_1)
+            self.BB_model.Two_D_plot(axs[0,0], 8, 8)
+        
+            axs[0,0].set_xticks(ticks=[])
             
-        contours = axs[0,1].contour(self.X1, self.X2, self.acq_values[p], levels = 10)
-        axs[0,1].clabel(contours, inline=True, fontsize=10)
-        axs[0,1].set_xticks(ticks=[])
-        axs[0,1].set_yticks(ticks=[])
+            contours = axs[0,1].contour(self.X1, self.X2, self.acq_values[point], levels = 8)
+            axs[0,1].clabel(contours, inline=True, fontsize=8)
+            axs[0,1].set_xticks(ticks=[])
+            axs[0,1].set_yticks(ticks=[])
             
-        contours = axs[1,0].contour(self.X1, self.X2, self.t1[p], levels = 10)
-        axs[1,0].clabel(contours, inline=True, fontsize=10)
-        axs[1,0].set_xticks(ticks=ticks_0_1)
-        axs[1,0].set_yticks(ticks=ticks_0_1)
+            contours = axs[1,0].contour(self.X1, self.X2, self.t1[point], levels = 8)
+            axs[1,0].clabel(contours, inline=True, fontsize=6)
             
-        contours = axs[1,1].contour(self.X1, self.X2, self.t2[p], levels = 10)
-        axs[1,1].clabel(contours, inline=True, fontsize=10)
-        axs[1,1].set_xticks(ticks=ticks_0_1)
-        axs[1,1].set_yticks(ticks=[])
+            contours = axs[1,1].contour(self.X1, self.X2, self.t2[point], levels = 8)
+            axs[1,1].clabel(contours, inline=True, fontsize=8)
+            axs[1,1].set_yticks(ticks=[])
+            
+        else: #Single Plot
+            fig, ax = plt.subplots()
+        
+            color = 'red'
+            ax.scatter([self.X_values[point,0]], [self.X_values[point,1]], color = color, marker = 'D')
+            
+            ax.set_xlim(0, 10.0)
+            ax.set_ylim(0, 20.0)
+       
+            contours = ax.contour(self.X1, self.X2, self.acq_values[point], levels = 10)
+            ax.clabel(contours, inline=True, fontsize=10)
             
         fig.tight_layout()
         
@@ -268,16 +278,15 @@ class Acq_Data_2D(Acq_Data):
     def plot_all(self):
         fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
 
-        ticks_0_1 = [0.00, 0.25, 0.50, 0.75, 1.00]
-
         ax1.set_yticks(ticks=[])
         #ax1.set_xticks(ticks=[0,5,10,15,20])
         ax1.set_xlim([0, self.N_iter_points+1])
         ax1.set_xlabel('Iteration Number')
         
-        ax2.set_xticks(ticks=ticks_0_1)
-        ax2.set_yticks(ticks=ticks_0_1)
-        self.BB_model.Forrester_plot_2D(ax2, 8)
+        ax2.set_xlim(0, 10.0)
+        ax2.set_ylim(0, 20.0)
+       
+        self.BB_model.Two_D_plot(ax2, 8, 8)
 
         for point in range(self.N_iter_points):
             

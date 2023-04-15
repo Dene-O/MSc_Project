@@ -219,44 +219,53 @@ class Feature_Statistics(object):
 
         else:
 
-            # copy the values in counts for later
-            original_counts = deepcopy(counts)
             
-            # determine the features and their indices with the highest counts
-            top_indices = np.empty([max_features], dtype=np.uint32)
-            for outer in range(max_features):
-                
-                max_index =  0
-                max_count = -1
-                for inner in range(self.Num_Features):
-                    if counts[inner] > max_count:
-                        max_count = counts[inner]
-                        max_index = inner
-
-                # store index of highest count in top_indices, but remove that count for the next loop
-                top_indices[outer] = max_index
-                counts[max_index]  = -1
             
- 
-            # the feature indices are in order of the highest feature counts, sort them in indices order
+            top_indices = np.argpartition(counts, -max_features)[-max_features:]
             top_indices.sort()
-                        
-            #assign
-            self.Top_Scores = np.empty([self.Num_Samples, max_features], dtype=float)
-            self.Top_Counts = np.empty([max_features], dtype=np.int32)
-            self.Top_Features = []
-            for index in range(max_features):
-                
-                self.Top_Counts[index] = original_counts[top_indices[index]]
-                
-                self.Top_Features.append(self.Feature_Names[top_indices[index]])
-                
-                self.Top_Scores[:,index] = self.Feature_Scores[:,top_indices[index]]
-                
-                
+
             self.Top_Indicies = top_indices
             self.Max_Features = max_features
             
+            self.Top_Counts   = counts[top_indices]
+            self.Top_Scores   = self.Feature_Scores[:,top_indices]
+            self.Top_Features = []
+            
+            for index in range(max_features):            
+                self.Top_Features.append(self.Feature_Names[top_indices[index]])
+
+            
+            # determine the features and their indices with the highest counts
+            #top_indices = np.empty([max_features], dtype=np.uint32)
+            #for outer in range(max_features):
+                
+            #    max_index =  0
+            #    max_count = -1
+            #    for inner in range(self.Num_Features):
+            #        if counts[inner] > max_count:
+            #            max_count = counts[inner]
+            #            max_index = inner
+
+            #    # store index of highest count in top_indices, but remove that count for the next loop
+            #    top_indices[outer] = max_index
+            #    counts[max_index]  = -1
+            
+ 
+            # the feature indices are in order of the highest feature counts, sort them in indices order
+                        
+            #assign
+            #self.Top_Scores = np.empty([self.Num_Samples, max_features], dtype=float)
+            #self.Top_Counts = np.empty([max_features], dtype=np.int32)
+            #self.Top_Features = []
+            #for index in range(max_features):
+                
+            #    self.Top_Counts[index] = original_counts[top_indices[index]]
+                
+            #    self.Top_Features.append(self.Feature_Names[top_indices[index]])
+                
+            #    self.Top_Scores[:,index] = self.Feature_Scores[:,top_indices[index]]
+                
+                
     
     
     def Frequency_Plot(self, top_features=True, display_feature_list=False):
@@ -335,13 +344,17 @@ class Feature_Statistics(object):
     def Box_Plot(self, top_features=True, showfliers=True):
 
         fig, ax = plt.subplots()
+        
+        print('top_features',top_features)
 
         title = 'Box Plot in Explanations from ' + str(self.Num_Samples) + ' Samples for ' + self.Group_String()
 
         if top_features:
+            print('top_features', self.Top_Scores.shape)
             ax.boxplot(x = self.Top_Scores, widths=0.5, \
                        patch_artist=True, showmeans=True, showfliers=showfliers)
         else:
+            print('ALL features', self.Feature_Scores.shape)
             ax.boxplot(x = self.Feature_Scores, widths=0.5, \
                        patch_artist=True, showmeans=True, showfliers=showfliers)
         
