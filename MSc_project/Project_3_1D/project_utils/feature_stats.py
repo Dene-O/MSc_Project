@@ -138,9 +138,15 @@ class Feature_Statistics(object):
     def Copy_Rows (self, target):
         
         for row in range(self.Num_Samples):
-            target.Add_Sample(self.Feature_Scores[row], self.Features[row],      self.Outcomes[row],
-                              self.f_predictions[row],  self.e_predictions[row], self.Exp_Models[row])
+            target.Add_Sample(sample_scores = self.Feature_Scores[row],
+                              X_row         = self.Features[row],
+                              outcome       = self.Outcomes[row],
+                              f_prediction  = self.f_predictions[row],
+                              e_prediction  = self.e_predictions[row],
+                              feopt         = self.feopt,         
+                              model         =self.Exp_Models[row])
 
+      
 
     def Write_To_File(self, file_handle):
 
@@ -235,37 +241,7 @@ class Feature_Statistics(object):
                 self.Top_Features.append(self.Feature_Names[top_indices[index]])
 
             
-            # determine the features and their indices with the highest counts
-            #top_indices = np.empty([max_features], dtype=np.uint32)
-            #for outer in range(max_features):
-                
-            #    max_index =  0
-            #    max_count = -1
-            #    for inner in range(self.Num_Features):
-            #        if counts[inner] > max_count:
-            #            max_count = counts[inner]
-            #            max_index = inner
-
-            #    # store index of highest count in top_indices, but remove that count for the next loop
-            #    top_indices[outer] = max_index
-            #    counts[max_index]  = -1
-            
- 
-            # the feature indices are in order of the highest feature counts, sort them in indices order
-                        
-            #assign
-            #self.Top_Scores = np.empty([self.Num_Samples, max_features], dtype=float)
-            #self.Top_Counts = np.empty([max_features], dtype=np.int32)
-            #self.Top_Features = []
-            #for index in range(max_features):
-                
-            #    self.Top_Counts[index] = original_counts[top_indices[index]]
-                
-            #    self.Top_Features.append(self.Feature_Names[top_indices[index]])
-                
-            #    self.Top_Scores[:,index] = self.Feature_Scores[:,top_indices[index]]
-                
-                
+              
     
     
     def Frequency_Plot(self, top_features=True, display_feature_list=False):
@@ -757,10 +733,10 @@ class Regression_Feature_Statistics(Feature_Statistics):
         self.Label = f"{lower:.2f}" + '-' + f"{upper:.2f}"
          
         
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
         
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)
+            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model)
        
     def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        
@@ -831,10 +807,10 @@ class Class_Feature_Statistics(Feature_Statistics):
             self.Selected_Class = selected_class
             self.Selected_Index = classes.index(selected_class)
         
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
         
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)
+            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model)
        
     def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        

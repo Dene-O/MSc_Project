@@ -28,6 +28,7 @@ class Feature_Statistics(object):
             self.Scaled_Scores  = np.empty([0, self.Num_Features], dtype=float)
             self.Features       = np.empty([0, self.Num_Features], dtype=float)
             self.Exp_Models     = []
+            self.feopt          = np.empty([0], dtype=np.uint8)
         
             if mode == 'classification':
                 self.Mode          = 'classification'
@@ -48,7 +49,7 @@ class Feature_Statistics(object):
 
 
            
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -74,6 +75,8 @@ class Feature_Statistics(object):
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
         self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
         
+        self.feopt = np.append(self.feopt, [feopt])
+
         self.Exp_Models.append(model)
 
         self.Num_Samples += 1
@@ -135,9 +138,15 @@ class Feature_Statistics(object):
     def Copy_Rows (self, target):
         
         for row in range(self.Num_Samples):
-            target.Add_Sample(self.Feature_Scores[row], self.Features[row],      self.Outcomes[row],
-                              self.f_predictions[row],  self.e_predictions[row], self.Exp_Models[row])
+            target.Add_Sample(sample_scores = self.Feature_Scores[row],
+                              X_row         = self.Features[row],
+                              outcome       = self.Outcomes[row],
+                              f_prediction  = self.f_predictions[row],
+                              e_prediction  = self.e_predictions[row],
+                              feopt         = self.feopt,         
+                              model         =self.Exp_Models[row])
 
+      
 
     def Write_To_File(self, file_handle):
 
@@ -216,44 +225,23 @@ class Feature_Statistics(object):
 
         else:
 
-            # copy the values in counts for later
-            original_counts = deepcopy(counts)
             
-            # determine the features and their indices with the highest counts
-            top_indices = np.empty([max_features], dtype=np.uint32)
-            for outer in range(max_features):
-                
-                max_index =  0
-                max_count = -1
-                for inner in range(self.Num_Features):
-                    if counts[inner] > max_count:
-                        max_count = counts[inner]
-                        max_index = inner
-
-                # store index of highest count in top_indices, but remove that count for the next loop
-                top_indices[outer] = max_index
-                counts[max_index]  = -1
             
- 
-            # the feature indices are in order of the highest feature counts, sort them in indices order
+            top_indices = np.argpartition(counts, -max_features)[-max_features:]
             top_indices.sort()
-                        
-            #assign
-            self.Top_Scores = np.empty([self.Num_Samples, max_features], dtype=float)
-            self.Top_Counts = np.empty([max_features], dtype=np.int32)
-            self.Top_Features = []
-            for index in range(max_features):
-                
-                self.Top_Counts[index] = original_counts[top_indices[index]]
-                
-                self.Top_Features.append(self.Feature_Names[top_indices[index]])
-                
-                self.Top_Scores[:,index] = self.Feature_Scores[:,top_indices[index]]
-                
-                
+
             self.Top_Indicies = top_indices
             self.Max_Features = max_features
             
+            self.Top_Counts   = counts[top_indices]
+            self.Top_Scores   = self.Feature_Scores[:,top_indices]
+            self.Top_Features = []
+            
+            for index in range(max_features):            
+                self.Top_Features.append(self.Feature_Names[top_indices[index]])
+
+            
+              
     
     
     def Frequency_Plot(self, top_features=True, display_feature_list=False):
@@ -332,13 +320,17 @@ class Feature_Statistics(object):
     def Box_Plot(self, top_features=True, showfliers=True):
 
         fig, ax = plt.subplots()
+        
+        print('top_features',top_features)
 
         title = 'Box Plot in Explanations from ' + str(self.Num_Samples) + ' Samples for ' + self.Group_String()
 
         if top_features:
+            print('top_features', self.Top_Scores.shape)
             ax.boxplot(x = self.Top_Scores, widths=0.5, \
                        patch_artist=True, showmeans=True, showfliers=showfliers)
         else:
+            print('ALL features', self.Feature_Scores.shape)
             ax.boxplot(x = self.Feature_Scores, widths=0.5, \
                        patch_artist=True, showmeans=True, showfliers=showfliers)
         
@@ -500,8 +492,9 @@ class Feature_Statistics(object):
         
         fig, ax = plt.subplots()
             
+        plt.scatter(x = self.Outcomes, y = self.feopt,              label = 'feopt',  marker='o')
         plt.scatter(x = self.Outcomes, y = self.f_predictions,      label = 'BB',  marker='x')
-        plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='o')
+        plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='+')
                
         ax.set_xlabel('Y Test')
         ax.set_ylabel('Model Prediction')
@@ -740,10 +733,10 @@ class Regression_Feature_Statistics(Feature_Statistics):
         self.Label = f"{lower:.2f}" + '-' + f"{upper:.2f}"
          
         
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
         
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)
+            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model)
        
     def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        
@@ -814,10 +807,10 @@ class Class_Feature_Statistics(Feature_Statistics):
             self.Selected_Class = selected_class
             self.Selected_Index = classes.index(selected_class)
         
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
         
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)
+            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model)
        
     def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        

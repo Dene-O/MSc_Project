@@ -130,7 +130,7 @@ class FUR_W(Acq_Base):
             
         self.X_next = self.X_next.reshape(1,-1)
             
-        print('NEXT X: ', self.X_next)
+        #print('NEXT X: ', self.X_next)
         return self.X_next
             
         
@@ -169,13 +169,13 @@ class FUR_W(Acq_Base):
     
     def next_x_opt(self, gp_model):
 
-        print('Bounds: ', self.bounds)
+        #print('Bounds: ', self.bounds)
         opt_result = minimize(fun    = self._compute_acq_inverse,
                               x0     = self.X_init,
                               method = self.opt_method,
                               bounds = self.bounds)
         
-        print(opt_result)
+        #print(opt_result)
         if opt_result.success:
             X_next = opt_result.x
             

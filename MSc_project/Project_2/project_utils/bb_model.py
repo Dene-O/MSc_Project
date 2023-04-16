@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 
 class BB_Model(object):
 
+    ####################################################################################################################
     def __init__(self,
                  dataset,
                  mode='classification',
@@ -30,10 +31,12 @@ class BB_Model(object):
                  classes=None,
                  train_size=0.80,
                  N_samples=500,
+                 Feature_Counts=[],
                  random_state=None):
 
         self.data_frame = None
-        
+
+        ################################################################################################################
         if dataset == 'Boston':
 
             self.mode = 'regression'
@@ -48,6 +51,7 @@ class BB_Model(object):
             self.Read_File('datasets/boston_adj.csv')
             
             
+        ################################################################################################################
         elif dataset == 'Wine':
 
             self.mode = mode
@@ -61,6 +65,7 @@ class BB_Model(object):
             
             self.Read_File('datasets/winequality-white.csv')
             
+        ################################################################################################################
         elif dataset == 'Diabetes':
 
             self.mode = 'classification'
@@ -78,13 +83,14 @@ class BB_Model(object):
             
             
           
+        ################################################################################################################
         elif dataset == 'Classification' or dataset == 'classification':
         
             self.mode = 'classification'
             self.catagorical_features = []
             
-            n_features    = 10
-            n_informative = 5
+            n_features    = Feature_Counts[0]
+            n_informative = Feature_Counts[1]
             
             self.X, self.y = make_classification(n_samples     = N_samples,
                                                  n_features    = n_features,
@@ -95,13 +101,15 @@ class BB_Model(object):
             self.outcome = 'Outcome'
 
             
+        ################################################################################################################
         elif dataset == 'Regression' or dataset == 'regression':
             
             self.mode = 'regression'
             self.catagorical_features = []
             
-            n_features    = 10
-            n_informative = 5
+            n_features    = Feature_Counts[0]
+            n_informative = Feature_Counts[1]
+            n_passive     = n_features - n_informative
             
             self.X, self.y, coeffs = make_regression(n_samples     = N_samples,
                                                      n_features    = n_features,
@@ -113,14 +121,18 @@ class BB_Model(object):
  
             feature_names = []
     
-            for feature in range(n_features - n_informative):                
+            for feature in range(n_passive):                
                 feature_names.append('Passive_' + str(feature))
                 
-            for feature in range(n_informative, n_features):                
+               
+            for feature in range(n_passive, n_features):                
                 feature_names.append('Active_' + str(feature))
 
+                           
             coeff_order = np.argsort(coeffs)
 
+            #print('Coeffs and Order: ',coeffs, coeff_order)
+                
             self.feature_names = []
             for feature_index in range(n_features):       
                 for coeff_index in range(n_features):
@@ -128,14 +140,15 @@ class BB_Model(object):
                         self.feature_names.append(feature_names[coeff_index])
                         break
             
-            print(self.feature_names)
-            print(coeff_order)
-            print(coeffs)
+            #print('Features:    ', self.feature_names)
+            #print('Coeff Order: ', coeff_order)
+            #print('Coeffs:      ', coeffs)
             
             self.outcome = 'Y_Value'
             
                  
             
+        ################################################################################################################
         elif dataset == 'Forrester' or dataset == 'forrester':
         
             self.mode = 'regression'
@@ -143,7 +156,8 @@ class BB_Model(object):
             
             n_features = 1
             
-            X = np.arange(0.0, 1.0, 0.001)
+            X = np.arange(-0.05, 0.95, 0.001)
+#            X = np.arange(0.28, 0.52, 0.001)
             self.y = BB_Model.Forrester(X)
 
             print(X.shape)
@@ -155,14 +169,131 @@ class BB_Model(object):
             plt.show()
                         
             self.X = np.empty([1000, 1])
+#            self.X = np.empty([240, 1])
             
             self.X[:,0] = X
             
             print(self.X.shape)
 
             
+        ################################################################################################################
+        elif dataset == 'Forrester_2D' or dataset == 'forrester_2d':
+        
+            self.mode = 'regression'
+            self.catagorical_features = []
+            
+            n_features = 2
+            N_x1       = 100
+            N_x2       = 100
+            N_x_all    = N_x1 * N_x2
+            
+            x1_range = np.arange(0.0, 1.0, 1.0/N_x1)
+            x2_range = np.arange(0.0, 1.0, 1.0/N_x2)
+
+            self.X      = np.empty([N_x_all, n_features])
+            self.y      = np.empty (N_x_all)
+            #self.y_plot = np.empty([N_x1, N_x2])
+            
+            idx = 0
+            for idx1 in range(N_x1):
+                for idx2 in range(N_x2):
+                    
+                    self.X[idx, 0] = x1_range[idx1]
+                    self.X[idx, 1] = x2_range[idx2]                    
+                    self.y[idx]    = BB_Model.Forrester_2D(self.X[idx,:])
+                    idx += 1
+            
+
+            print('X shape',self.X.shape)
+            print('y shape',self.y.shape)
+
+            self.feature_names = ['X1', 'X2']
+            self.outcome = 'Forrester 2D'
+            
+            
+            self.X1, self.X2 = np.meshgrid(x1_range, x2_range)
+            
+            self.Z = BB_Model.Forrester(self.X1) + BB_Model.Forrester(self.X2)
+
+            fig, ax = plt.subplots()
+            
+            contours = ax.contour(self.X1, self.X2, self.Z, levels = 8)
+            ax.clabel(contours, inline=True, fontsize=10)
+            
+            plt.show()
+                                   
+            
+
+        ################################################################################################################
+        elif dataset == 'Two_D' or dataset == 'two_d':
+        
+            self.mode = 'regression'
+            self.catagorical_features = []
+            
+            n_features = 2
+            N_x1       = 100
+            N_x2       = 100
+            N_x_all    = N_x1 * N_x2
+            
+            x1_range = np.arange(0, 10.0, 10.0/N_x1)
+            x2_range = np.arange(1, 20.0, 19.0/N_x2)
+            
+            y1 = np.empty(N_x1)
+            y2 = np.empty(N_x2)
+
+            for idx, x1 in enumerate(x1_range):
+                y1[idx] = 12 - (x1-3)*(x1-3)
+
+            for idx, x2 in enumerate(x2_range):
+                y2[idx] = 2 * x2 + 8 * np.sin(2 * x2) / x2
+            
+            #print('x1_range: ', np.mean(x1_range), np.std(x1_range))
+            #print('Y1: ', np.mean(y1), np.std(y1))
+            #print('x2_range: ', np.mean(x2_range), np.std(x2_range))
+            #print('Y2: ', np.mean(y2), np.std(y2))
+            
+            self.X = np.empty([N_x_all, n_features])
+            self.y = np.empty (N_x_all)
+            self.Z = np.empty([N_x1, N_x2])
+            
+            self.X1, self.X2 = np.meshgrid(x1_range, x2_range)
+            
+            idx = 0
+            for idx1 in range(N_x1):
+                for idx2 in range(N_x2):
+                    
+                    self.X[idx, 0] = x1_range[idx1]
+                    self.X[idx, 1] = x2_range[idx2]  
+                    
+                    self.y[idx] = y1[idx1] + y2[idx2]
+                    
+                    self.Z[idx1, idx2] = y1[idx1] + y2[idx2]
+                           
+                    idx += 1
+            
+
+            print('X shape',self.X.shape)
+            print('y shape',self.y.shape)
+
+            self.feature_names = ['X1', 'X2']
+            self.outcome = 'Regression 2D'
+            
+            
+            #fig, (ax1, ax2) = plt.subplots(2, 1)
+            #ax1.plot(x1,y1)
+            #ax2.plot(x2,y2)
+            
+            fig, ax = plt.subplots()
+            
+            contours = ax.contour(self.X1, self.X2, self.Z)
+            ax.clabel(contours, inline=True, fontsize=10)
+            
+            plt.show()
+                                   
+            
 
             
+        ################################################################################################################
         else:
             self.mode = mode
 
@@ -173,6 +304,7 @@ class BB_Model(object):
 
             self.Read_File(dataset)
             
+        ################################################################################################################
 
             
         self.random_state = check_random_state(random_state)
@@ -181,6 +313,7 @@ class BB_Model(object):
           train_test_split(self.X, self.y, train_size=train_size, random_state=self.random_state)
         
 
+    ####################################################################################################################
     def Read_File(self, filename):
         
         self.data_frame = pd.read_csv(filename)
@@ -190,6 +323,7 @@ class BB_Model(object):
         
 
                           
+    ####################################################################################################################
     # used in debugging only
     def df(self):
         if self.data_frame == None:
@@ -197,10 +331,32 @@ class BB_Model(object):
         else:
             return self.data_frame
             
+    ####################################################################################################################
     @staticmethod        
     def Forrester(x):
         return np.square(6.0*x - 2.0)*np.sin(12.0*x - 4.0)
             
+    @staticmethod        
+    def Forrester_2D(X):
+        return BB_Model.Forrester(X[0]) + BB_Model.Forrester(X[1]) 
+            
+    ####################################################################################################################
+    def Forrester_plot_2D(self, ax, levels, fontsize):
+        
+        contours = ax.contour(self.X1, self.X2, self.Z, levels = levels)
+        ax.clabel(contours, inline=True, fontsize = fontsize)
+            
+            
+            
+    ####################################################################################################################
+    def Two_D_plot(self, ax, levels, fontsize):
+        
+        contours = ax.contour(self.X1, self.X2, self.Z, levels = levels)
+        ax.clabel(contours, inline=True, fontsize = fontsize)
+            
+            
+            
+    ####################################################################################################################
     def MPL(self, show_score=True):
     
         if self.mode == 'regression' or self.mode == 'Regression':
@@ -217,6 +373,7 @@ class BB_Model(object):
         return self.MPL_model
     
     
+    ####################################################################################################################
     def Random_Forest(self, show_score=True):
     
         if self.mode == 'regression' or self.mode == 'Regression':
@@ -233,6 +390,7 @@ class BB_Model(object):
         return self.RF_model
     
     
+    ####################################################################################################################
     def L_Regression(self, show_score=True):
     
         if self.mode == 'regression' or self.mode == 'Regression':
@@ -248,6 +406,7 @@ class BB_Model(object):
             
         return self.LR_model
     
+    ####################################################################################################################
     def GP(self, show_score=True):
     
         if self.mode == 'regression' or self.mode == 'Regression':
@@ -265,36 +424,45 @@ class BB_Model(object):
     
     
     
-    
-    
+    ####################################################################################################################
     def get_mode(self):
         return self.mode
     
+    ####################################################################################################################
     def get_TT_data(self):
         return self.X_train, self.X_test, self.y_train, self.y_test
     
+    ####################################################################################################################
     def get_catagorical(self):
         return self.catagorical_features
     
+    ####################################################################################################################
     def get_features(self):
         return self.feature_names
     
+    ####################################################################################################################
     def get_classes(self):
         return self.class_names
     
+    ####################################################################################################################
     def get_MPL(self):
         return self.MPL_model
     
+    ####################################################################################################################
     def get_Random_Forest(self):
         return self.RF_model
     
+    ####################################################################################################################
     def get_L_Regression(self, show_score=True):           
         return self.LR_model  
    
+    ####################################################################################################################
     def get_GP(self, show_score=True):           
         return self.GP_model
     
-   
+    ####################################################################################################################
+    def get_2d_data(self):
+        return self.X, self.X1, self.X2
     
     
     

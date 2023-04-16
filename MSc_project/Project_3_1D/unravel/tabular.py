@@ -235,9 +235,8 @@ class UnRAVELTabularExplainer:
             
         elif importance_method == "KL":
             # Storing the surrogate dataset generated through the BO routine
-            X_surrogate = f_optim.get_evaluations()[0]
-            #print(X_surrogate)
-            # y_surrogate = f_e.get_evaluations()[1]
+            X_surrogate, y_surrogate = f_optim.get_evaluations()
+            
 
             # Storing the GP model trained during the BO routine
             gp_model = f_optim.model
@@ -257,15 +256,18 @@ class UnRAVELTabularExplainer:
             for j in range(0, n):
 
                 x_n = np.reshape(np.repeat(X_surrogate[j, :], 3), (p, 3))
+                
                 # loop through covariates
                 for dim in range(0, p):
 
                     # perturb x_n
                     x_n[dim, :] = x_n[dim, :] + deltax
-
+                    
                     preddeltamean, preddeltavar = gp_model.predict(x_n.T)
+                    
                     mean_orig = np.asmatrix(np.repeat(preddeltamean[1], 3)).T
                     var_orig = np.asmatrix(np.repeat(preddeltavar[1] ** 2, 3)).T
+                    
                     # compute the relevance estimate at x_n
                     KLsqrt = np.sqrt(
                         0.5

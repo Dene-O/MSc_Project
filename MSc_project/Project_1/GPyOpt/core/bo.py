@@ -14,7 +14,8 @@ from ..core.errors import InvalidConfigError
 from ..core.task.cost import CostModel
 from ..optimization.acquisition_optimizer import ContextManager
 
-from project_utils.acq_data_capture import Acq_Data
+from project_utils.acq_data_capture import Acq_Data_1D
+from project_utils.acq_data_capture import Acq_Data_nD
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +59,9 @@ class BO(object):
         self.model_parameters_iterations = None
         self.context = None
         self.num_acquisitions = 0
+        print('SPACE: ',space.get_bounds())
 
-        self.acq_data = Acq_Data()
+        self.acq_data = Acq_Data_1D()#X_Init = X_init, bounds = space.get_bounds())
 
     def suggest_next_locations(self, context = None, pending_X = None, ignored_X = None):
         #print('suggest_next_locations')

@@ -138,15 +138,9 @@ class Feature_Statistics(object):
     def Copy_Rows (self, target):
         
         for row in range(self.Num_Samples):
-            target.Add_Sample(sample_scores = self.Feature_Scores[row],
-                              X_row         = self.Features[row],
-                              outcome       = self.Outcomes[row],
-                              f_prediction  = self.f_predictions[row],
-                              e_prediction  = self.e_predictions[row],
-                              feopt         = self.feopt,         
-                              model         =self.Exp_Models[row])
+            target.Add_Sample(self.Feature_Scores[row], self.Features[row],      self.Outcomes[row],
+                              self.f_predictions[row],  self.e_predictions[row], self.Exp_Models[row])
 
-      
 
     def Write_To_File(self, file_handle):
 
@@ -733,10 +727,10 @@ class Regression_Feature_Statistics(Feature_Statistics):
         self.Label = f"{lower:.2f}" + '-' + f"{upper:.2f}"
          
         
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
         
         if outcome >= self.Lower and outcome <= self.Upper:
-            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model)
+            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)
        
     def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        
@@ -807,10 +801,10 @@ class Class_Feature_Statistics(Feature_Statistics):
             self.Selected_Class = selected_class
             self.Selected_Index = classes.index(selected_class)
         
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
         
         if outcome == self.Selected_Index or outcome == self.Selected_Class:
-            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model)
+            Feature_Statistics.Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model)
        
     def Add_LIME_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, model):
        

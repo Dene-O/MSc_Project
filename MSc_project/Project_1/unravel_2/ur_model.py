@@ -12,7 +12,9 @@ from matplotlib import pyplot as plt
 
 from unravel_2.acquisition_function import FUR_W
 
-from project_utils.acq_data_capture import Acq_Data
+from project_utils.acq_data_capture import Acq_Data_1D
+from project_utils.acq_data_capture import Acq_Data_2D
+from project_utils.acq_data_capture import Acq_Data_nD
 
 from copy import deepcopy
 
@@ -43,6 +45,7 @@ class UR_Model(object):
         self.BB_train_data = train_data
 
         self.feature_names = feature_names
+        self.N_features    = len(feature_names)
 
         #self.categorical_features = categorical_features
         
@@ -55,7 +58,8 @@ class UR_Model(object):
         
         self.sampling_optimize = sampling_optimize
           
-        self.acq_data = Acq_Data()
+        # 
+        self.acq_data = None
 
         
     def BB_predict(self, X):
@@ -106,8 +110,10 @@ class UR_Model(object):
         return gpr
     
     
+    
     def explain(self,
                 X_init,
+                Dimension='Multi D',
                 kernel_type="RBF",
                 max_iter=20,
                 alpha="FUR_W",
@@ -117,7 +123,7 @@ class UR_Model(object):
                 interval=1,
                 #verbosity=False,
                 #maximize=False
-               ):
+                ):
 
         n_samples = 20
         
@@ -132,6 +138,20 @@ class UR_Model(object):
         self.y_train = np.array(self.y_train)
         
         self.normalize = normalize
+        
+        bounds = np.empty([2,self.N_features])
+        
+        bounds[0,:] = self.X_init - self.std_x
+        bounds[1,:] = self.X_init + self.std_x
+        
+        if Dimension == 'One':
+            self.acq_data = Acq_Data_1D()
+        if Dimension == 'Two':
+            self.acq_data = Acq_Data_2D()
+        else:
+            self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
+
+
         
         if self.normalize:
         
