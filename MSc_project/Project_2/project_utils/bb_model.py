@@ -149,6 +149,73 @@ class BB_Model(object):
                  
             
         ################################################################################################################
+        elif dataset == 'Regression_2' or dataset == 'regression_2':
+            
+            self.mode = 'regression'
+            self.catagorical_features = []
+            
+            n_features    = 8
+            n_informative = 6
+            n_passive     = n_features - n_informative
+            
+            self.feature_names = []
+
+            Feature_Means = np.random.uniform(low=0.0,  high=10.0, size=n_features)
+            Feature_SDs   = np.random.uniform(low=0.25, high=5.0,  size=n_features)
+
+            self.X = np.empty([N_samples, n_features])
+
+            # Features 0, 1: Passive uniform distribution
+            for feature in range(n_passive):
+                
+                self.feature_names.append('Passive_' + str(feature))
+                
+                lower_range = Feature_Means[feature] - 2 * Feature_SDs[feature]
+                upper_range = Feature_Means[feature] + 2 * Feature_SDs[feature]
+                
+                self.X[:,feature] = np.random.uniform(low=lower_range, high=upper_range, size=N_samples)
+                
+            # Features 2, 3: Active uniform distribution
+            for feature in range(n_passive, n_passive + 2):  
+                
+                self.feature_names.append('Active_' + str(feature))
+
+                lower_range = Feature_Means[feature] - 2 * Feature_SDs[feature]
+                upper_range = Feature_Means[feature] + 2 * Feature_SDs[feature]
+                
+                self.X[:,feature] = np.random.uniform(low=lower_range, high=upper_range, size=N_samples)
+                
+            # Features 4, 5: Active n dormalistribution
+            for feature in range(n_passive + 2, n_passive + 4): 
+                
+                self.feature_names.append('Active_' + str(feature))
+               
+                self.X[:,feature] = np.random.normal(Feature_Means[feature], Feature_SDs[feature], size=N_samples)
+
+                
+            self.feature_names.append('Active_6')
+            self.feature_names.append('Active_7')
+                    
+            # Features 6, 7: Active and correlated with other active features
+            for sample in range(N_samples):
+
+                self.X[sample,6] = np.random.normal(self.X[sample,2]+self.X[sample,4], Feature_SDs[6])
+                self.X[sample,7] = np.random.normal(self.X[sample,3]+self.X[sample,5], Feature_SDs[7])
+                           
+            Feature_Coeffs = np.zeros([N_samples, n_features])
+            
+            Feature_Coeffs[:,2] = np.random.normal(5,  2,    size=N_samples)
+            Feature_Coeffs[:,3] = np.random.normal(-8, 1,    size=N_samples)
+            Feature_Coeffs[:,4] = np.random.normal(-4, 2,    size=N_samples)
+            Feature_Coeffs[:,5] = np.random.normal(10, 2,    size=N_samples)
+            Feature_Coeffs[:,6] = np.random.normal(6,  3,    size=N_samples)
+            Feature_Coeffs[:,7] = np.random.normal(-2, 0.25, size=N_samples)
+            
+            self.y = np.sum(self.X * Feature_Coeffs, axis = 1)
+            
+                 
+            
+        ################################################################################################################
         elif dataset == 'Forrester' or dataset == 'forrester':
         
             self.mode = 'regression'

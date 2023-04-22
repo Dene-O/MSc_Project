@@ -169,18 +169,48 @@ class FUR_W(Acq_Base):
     
     def next_x_opt(self, gp_model):
 
-        #print('Bounds: ', self.bounds)
-        opt_result = minimize(fun    = self._compute_acq_inverse,
-                              x0     = self.X_init,
-                              method = self.opt_method,
-                              bounds = self.bounds)
         
-        #print(opt_result)
-        if opt_result.success:
-            X_next = opt_result.x
-            
+        x0 = self.X_init
+
+        total_attempts   = 10
+        success_attempts = 0
+        
+        minimum_value = 1000000
+        X_next        = self.perturbed_X(self.X_init)
+        
+        
+        for tries in range(total_attempts):
+           
+            opt_result = minimize(fun    = self._compute_acq_inverse,
+                                  x0     = x0,
+                                  method = self.opt_method,
+                                  bounds = self.bounds)
+        
+            #print(opt_result)
+            if opt_result.success:
+                
+                print(' fun jac hess ',opt_result.fun,opt_result.jac)
+                
+                if minimum_value >= opt_result.fun:
+                    
+                    print('Opt new X')
+                    minimum_value = opt_result.fun
+                    X_next = opt_result.x
+                    
+                    success_attempts = success_attempts + 1
+
+                    # 5 sucesses should be enough
+                    if success_attempts >= 5:
+                        break
+
+            else:
+                print('Opt iteration fail')
+
+            x0 = self.perturbed_X(self.X_init)
+                
         else:
-            X_next = self.perturbed_X(self.X_next)
+            print('Optimize FAIL')
+
        
         return X_next
                 
@@ -194,7 +224,7 @@ class FUR_W(Acq_Base):
             self.weight = weight            
 
 
-    def perturbed_X(self, X, perb=0.25):
+    def perturbed_X(self, X, perb=0.5):
         return X + self.std_x * (np.random.random() * perb - perb)
         
         

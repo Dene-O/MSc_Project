@@ -12,8 +12,10 @@ from matplotlib import pyplot as plt
 
 from unravel_2.acquisition_function import FUR_W
 
+from project_utils.acq_data_capture import Acq_Data_1D_For
 from project_utils.acq_data_capture import Acq_Data_1D
 from project_utils.acq_data_capture import Acq_Data_2D
+from project_utils.acq_data_capture import Acq_Data_2D_For
 from project_utils.acq_data_capture import Acq_Data_nD
 
 from project_utils.GP_varsel import KLrel
@@ -100,9 +102,9 @@ class UR_Model(object):
         model_copy = deepcopy(self.gp_model)
         return model_copy   
     
-    def get_exp_kernel(self):
-        kernel_copy = deepcopy(self.gp_model.kernel_)
-        return kernel_copy   
+    def get_exp_L(self):
+        L_copy = deepcopy(self.gp_model.L_)
+        return L_copy   
     
     def train_gaussian_process(self, x_train, y_train):
 
@@ -150,11 +152,16 @@ class UR_Model(object):
         
         bounds[0,:] = self.X_init - self.std_x
         bounds[1,:] = self.X_init + self.std_x
+        print('bounds',bounds)
         
         if Dimension == 'One':
-            self.acq_data = Acq_Data_1D()
-        if Dimension == 'Two':
-            self.acq_data = Acq_Data_2D()
+            self.acq_data = Acq_Data_1D(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
+        elif Dimension == 'One_For':
+            self.acq_data = Acq_Data_1D_For()
+        elif Dimension == 'Two':
+            self.acq_data = Acq_Data_2D(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
+        elif Dimension == 'Two_For':
+            self.acq_data = Acq_Data_2D_For()
         else:
             self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
 
@@ -329,6 +336,40 @@ class UR_Model(object):
             y_p = self.gp_model.predict(X_p)
            
             variance[feature] = np.square(y - y_p)
+            
+        
+        return variance / np.mean(variance)
+            
+            
+            
+    def X2_rel(self):
+        
+        variance = np.empty(self.N_features)
+        
+        y = self.gp_model.predict(self.X_init)
+        
+        N_Samples = self.X_train.shape[0]
+        
+        for feature_outer in range(self.N_features):
+
+            X_train_p = np.empty([N_Samples, self.N_features - 1])
+            
+            for feature_inner in range(feature_outer):
+                
+                X_train_p[:,feature_inner] = self.X_train[:,feature_inner]
+
+            for feature_inner in range(feature_outer + 1, self.N_features):
+                
+                X_train_p[:,feature_inner - 1] = self.X_train[:,feature_inner]
+                
+                
+            GP = self.train_gaussian_process(X_train_p, self.y_train)
+
+            X_p = X_train_p[0,:].reshape(1,-1)
+                       
+            y_p = GP.predict(X_p)
+           
+            variance[feature_outer] = np.square(y - y_p)
             
         
         return variance / np.mean(variance)

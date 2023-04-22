@@ -12,9 +12,14 @@ from matplotlib import pyplot as plt
 
 from unravel_2.acquisition_function import FUR_W
 
+from project_utils.acq_data_capture import Acq_Data_1D_For
 from project_utils.acq_data_capture import Acq_Data_1D
 from project_utils.acq_data_capture import Acq_Data_2D
+from project_utils.acq_data_capture import Acq_Data_2D_For
 from project_utils.acq_data_capture import Acq_Data_nD
+
+from project_utils.GP_varsel import KLrel
+from project_utils.GP_varsel import VARrel
 
 from copy import deepcopy
 
@@ -97,6 +102,10 @@ class UR_Model(object):
         model_copy = deepcopy(self.gp_model)
         return model_copy   
     
+    def get_exp_L(self):
+        L_copy = deepcopy(self.gp_model.L_)
+        return L_copy   
+    
     def train_gaussian_process(self, x_train, y_train):
 
         if self.kernel_type == None or self.kernel_type == "RBF":
@@ -143,11 +152,16 @@ class UR_Model(object):
         
         bounds[0,:] = self.X_init - self.std_x
         bounds[1,:] = self.X_init + self.std_x
+        print('bounds',bounds)
         
         if Dimension == 'One':
-            self.acq_data = Acq_Data_1D()
-        if Dimension == 'Two':
-            self.acq_data = Acq_Data_2D()
+            self.acq_data = Acq_Data_1D(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
+        elif Dimension == 'One_For':
+            self.acq_data = Acq_Data_1D_For()
+        elif Dimension == 'Two':
+            self.acq_data = Acq_Data_2D(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
+        elif Dimension == 'Two_For':
+            self.acq_data = Acq_Data_2D_For()
         else:
             self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
 
@@ -247,17 +261,23 @@ class UR_Model(object):
 
         
     def KL_imp(self, show_plot=False):
-    
-        return self.KLrel(X = self.X_train, model=self.gp_model, delta=1)
+        return KLrel(X = self.X_train, model=self.gp_model, delta=1)
         
-    def KLrel(self, X, model, delta):
+
+        
+    def Var_imp(self, show_plot=False):
+        return VARrel(X=self.X_train, model=self.gp_model, nquadr=12, pointwise = False)
+    
+        
+
+        
+    def KLrel_a(self, X, model, delta):
         """Computes relevance estimates for each covariate using the KL method based on the data matrix X and a GPy model.
         The parameter delta defines the amount of perturbation used."""
         n = X.shape[0]
         p = X.shape[1]
         
         print(X.shape)
-        return np.zeros([12])
         
         jitter = 1e-15
     
@@ -278,16 +298,82 @@ class UR_Model(object):
                 x_n[dim,:] = x_n[dim,:] + deltax
                 
                 preddeltamean,preddeltavar = model.predict(x_n.T, return_std = True)
+
+                preddeltamean = preddeltamean.reshape(3,1)
+                preddeltavar  = preddeltavar.reshape(3,1)
+                
                 mean_orig = np.asmatrix(np.repeat(preddeltamean[1],3)).T
                 var_orig = np.asmatrix(np.repeat(preddeltavar[1],3)).T
+                    
                 # compute the relevance estimate at x_n
                 KLsqrt = np.sqrt(0.5*(var_orig/preddeltavar + np.multiply((preddeltamean.reshape(3,1)-mean_orig),(preddeltamean.reshape(3,1)-mean_orig))/preddeltavar - 1) + np.log(np.sqrt(preddeltavar/var_orig)) + jitter)
+                
                 relevances[j,dim] = 0.5*(KLsqrt[0] + KLsqrt[2])/delta
                 
         # remove the perturbation
         x_n[dim,:] = x_n[dim,:] - deltax
+
+        score = np.mean(relevances, axis=0)
+
+        return score
+    
+    
+
+    def X_rel(self):
+        
+        variance = np.empty(self.N_features)
+        
+        y = self.gp_model.predict(self.X_init)
+        
+        for feature in range(self.N_features):
             
-        return relevances
-    
-    
-    
+            X_p = deepcopy(self.X_init.ravel())
+
+            X_p[feature] = 0
+            
+            X_p = X_p.reshape([1,self.N_features])
+                       
+            y_p = self.gp_model.predict(X_p)
+           
+            variance[feature] = np.square(y - y_p)
+            
+        
+        return variance / np.mean(variance)
+            
+            
+            
+    def X2_rel(self):
+        
+        variance = np.empty(self.N_features)
+        
+        y = self.gp_model.predict(self.X_init)
+        
+        N_Samples = self.X_train.shape[0]
+        
+        for feature_outer in range(self.N_features):
+
+            X_train_p = np.empty([N_Samples, self.N_features - 1])
+            
+            for feature_inner in range(feature_outer):
+                
+                X_train_p[:,feature_inner] = self.X_train[:,feature_inner]
+
+            for feature_inner in range(feature_outer + 1, self.N_features):
+                
+                X_train_p[:,feature_inner - 1] = self.X_train[:,feature_inner]
+                
+                
+            GP = self.train_gaussian_process(X_train_p, self.y_train)
+
+            X_p = X_train_p[0,:].reshape(1,-1)
+                       
+            y_p = GP.predict(X_p)
+           
+            variance[feature_outer] = np.square(y - y_p)
+            
+        
+        return variance / np.mean(variance)
+            
+            
+            
+        

@@ -15,7 +15,7 @@ def KLrel(X, model, delta):
     The parameter delta defines the amount of perturbation used."""
     n = X.shape[0]
     p = X.shape[1]
-    
+       
     jitter = 1e-15
 
     # perturbation
@@ -36,6 +36,9 @@ def KLrel(X, model, delta):
             
             preddeltamean,preddeltavar = model.predict(x_n.T, return_std=True)
             
+            preddeltamean = preddeltamean.reshape(3,1)
+            preddeltavar  = preddeltavar.reshape(3,1)
+                
             mean_orig = np.asmatrix(np.repeat(preddeltamean[1],3)).T
             
             var_orig = np.asmatrix(np.repeat(preddeltavar[1],3)).T
@@ -50,7 +53,7 @@ def KLrel(X, model, delta):
             # remove the perturbation
             x_n[dim,:] = x_n[dim,:] - deltax
             
-    return relevances
+    return np.mean(relevances,axis=0)
 
 
 
@@ -103,7 +106,8 @@ def VARrel(X,model,nquadr, pointwise = False): # now stops jittering when cond_2
             fcalcpoints = np.repeat(X[k,:],nquadr).reshape(p,nquadr).T
             fcalcpoints[:,j] = np.sqrt(2)*np.sqrt(intcov)*points + intmean
 
-            predmean,predvar = GPy.models.GPRegression.predict_noiseless(model,fcalcpoints,full_cov=False)
+            #predmean,predvar = GPy.models.GPRegression.predict_noiseless(model,fcalcpoints,full_cov=False)
+            predmean,predvar = model.predict(fcalcpoints, return_std=True)
             fsquare = predmean*predmean
 
             # Gauss-Hermite quadrature integration

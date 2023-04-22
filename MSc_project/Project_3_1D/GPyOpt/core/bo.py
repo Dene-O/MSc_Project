@@ -15,7 +15,9 @@ from ..core.task.cost import CostModel
 from ..optimization.acquisition_optimizer import ContextManager
 
 from project_utils.acq_data_capture import Acq_Data_1D
+from project_utils.acq_data_capture import Acq_Data_1D_For
 from project_utils.acq_data_capture import Acq_Data_2D
+from project_utils.acq_data_capture import Acq_Data_2D_For
 from project_utils.acq_data_capture import Acq_Data_nD
 
 logger = logging.getLogger(__name__)
@@ -63,9 +65,9 @@ class BO(object):
         #print('SPACE: ',space.get_bounds())
       
         if X_init.size == 1:
-            self.acq_data = Acq_Data_1D()
+            self.acq_data = Acq_Data_1D(X_Init = X_init, bounds = space.get_bounds())
         if X_init.size == 2:
-            self.acq_data = Acq_Data_2D()
+            self.acq_data = Acq_Data_2D(X_Init = X_init, bounds = space.get_bounds())
         else:
             self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = space.get_bounds())
 
