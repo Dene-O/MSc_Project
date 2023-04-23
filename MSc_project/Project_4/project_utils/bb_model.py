@@ -201,9 +201,9 @@ class BB_Model(object):
 
                 self.X[sample,6] = np.random.normal(self.X[sample,2]+self.X[sample,4], Feature_SDs[6])
                 self.X[sample,7] = np.random.normal(self.X[sample,3]+self.X[sample,5], Feature_SDs[7])
-                           
+
             Feature_Coeffs = np.zeros([N_samples, n_features])
-            
+
             Feature_Coeffs[:,2] = np.random.normal(5,  2,    size=N_samples)
             Feature_Coeffs[:,3] = np.random.normal(-8, 1,    size=N_samples)
             Feature_Coeffs[:,4] = np.random.normal(-4, 2,    size=N_samples)
@@ -227,7 +227,7 @@ class BB_Model(object):
 #            X = np.arange(0.28, 0.52, 0.001)
             self.y = BB_Model.Forrester(X)
 
-            print(X.shape)
+            #print(X.shape)
             self.feature_names = ['X']
             self.outcome = 'Forrester'
 
@@ -240,7 +240,7 @@ class BB_Model(object):
             
             self.X[:,0] = X
             
-            print(self.X.shape)
+            #print(self.X.shape)
 
             
         ################################################################################################################
@@ -271,8 +271,8 @@ class BB_Model(object):
                     idx += 1
             
 
-            print('X shape',self.X.shape)
-            print('y shape',self.y.shape)
+            #print('X shape',self.X.shape)
+            #print('y shape',self.y.shape)
 
             self.feature_names = ['X1', 'X2']
             self.outcome = 'Forrester 2D'

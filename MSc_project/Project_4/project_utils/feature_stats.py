@@ -317,7 +317,7 @@ class Feature_Statistics(object):
             
         
             
-    def Box_Plot(self, top_features=True, showfliers=True):
+    def Box_Plot(self, top_features=True, showfliers=False):
 
         fig, ax = plt.subplots()
         

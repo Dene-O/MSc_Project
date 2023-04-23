@@ -33,7 +33,7 @@ class FUR_W(Acq_Base):
         self.std_x = std_x
         
         self.X_next = X_init
-        
+     
         if weight == None:
             self.weight = [0.5, 0.5]
         
@@ -163,7 +163,7 @@ class FUR_W(Acq_Base):
 
                 
         #self.Plot_X_Diff_Acq()
-               
+                      
         return X_next
                 
     
@@ -174,6 +174,7 @@ class FUR_W(Acq_Base):
 
         total_attempts   = 10
         success_attempts = 0
+        X_updated        = False
         
         minimum_value = 1000000
         X_next        = self.perturbed_X(self.X_init)
@@ -185,31 +186,30 @@ class FUR_W(Acq_Base):
                                   x0     = x0,
                                   method = self.opt_method,
                                   bounds = self.bounds)
-        
-            #print(opt_result)
+            
             if opt_result.success:
-                
-                print(' fun jac hess ',opt_result.fun,opt_result.jac)
-                
+                               
+                success_attempts = success_attempts + 1
+
                 if minimum_value >= opt_result.fun:
                     
-                    print('Opt new X')
                     minimum_value = opt_result.fun
                     X_next = opt_result.x
-                    
-                    success_attempts = success_attempts + 1
+      
+                    X_updated = True
 
-                    # 5 sucesses should be enough
-                    if success_attempts >= 5:
-                        break
+                    
+                # 5 sucesses should be enough
+                if X_updated and (success_attempts >= 5):
+                    break
 
             else:
-                print('Opt iteration fail')
+                print('Opt iteration fail: ', opt_result.message)
 
             x0 = self.perturbed_X(self.X_init)
                 
         else:
-            print('Optimize FAIL')
+            print('Optimize FAIL', tries, ':', success_attempts, X_updated)
 
        
         return X_next
@@ -240,6 +240,10 @@ class FUR_W(Acq_Base):
     def Plot_X_Diff_Acq(self):
         
         plt.scatter(self.X_diffs, self.acqu_fs)
+        
     
+
+        
+        
 
     
