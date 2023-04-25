@@ -17,7 +17,7 @@ class Feature_Statistics(object):
     colour_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:yellow']
     colour_max  = len(colour_list)
                           
-    def __init__(self, feature_names=None, mode='classification', classes=None, file_handle=None):
+    def __init__(self, feature_names=None, mode='classification', classes=None, uncert_pr=True, file_handle=None):
 
         if file_handle == None:
             
@@ -29,6 +29,8 @@ class Feature_Statistics(object):
             self.Features       = np.empty([0, self.Num_Features], dtype=float)
             self.Exp_Models     = []
             self.feopt          = np.empty([0], dtype=np.uint8)
+            self.uncert_pr      = uncert_pr
+
         
             if mode == 'classification':
                 self.Mode          = 'classification'
@@ -38,10 +40,16 @@ class Feature_Statistics(object):
                 self.e_predictions = np.empty([0, self.Num_Classes], float)
                 self.Outcomes      = np.empty([0], dtype=np.uint8)
                 
-            else:
+            elif self.uncert_pr:
                 self.Mode           = 'regression'
                 self.f_predictions  = np.empty([0], dtype=float)
                 self.e_predictions  = np.empty([0, 2], dtype=float)
+                self.Outcomes       = np.empty([0], dtype=float)
+                
+            else:
+                self.Mode           = 'regression'
+                self.f_predictions  = np.empty([0], dtype=float)
+                self.e_predictions  = np.empty([0], dtype=float)
                 self.Outcomes       = np.empty([0], dtype=float)
                 
         else:
@@ -58,7 +66,12 @@ class Feature_Statistics(object):
         
         else:
             self.f_predictions = np.append(self.f_predictions, [f_prediction])
-            self.e_predictions = np.vstack([self.e_predictions, np.asarray(e_prediction, dtype=float)])
+            
+            if self.uncert_pr:
+                self.e_predictions = np.vstack([self.e_predictions, np.asarray(e_prediction, dtype=float)])
+            else:
+                self.e_predictions = np.append(self.e_predictions, np.asarray(e_prediction, dtype=float))
+            
             self.Outcomes      = np.append(self.Outcomes, [outcome])
             
             self.Max_Outcome = np.max(self.Outcomes)
@@ -74,8 +87,9 @@ class Feature_Statistics(object):
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
         self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
-        
-        self.feopt = np.append(self.feopt, [feopt])
+
+        if feopt == None:
+            self.feopt = None
 
         self.Exp_Models.append(model)
 
@@ -96,7 +110,7 @@ class Feature_Statistics(object):
 
             e_prediction = np.asarray(e_prediction, dtype=float)
             #e_prediction = np.append(e_prediction, [0.0])#########################################################
-            self.e_predictions = np.vstack([self.e_predictions, e_prediction])
+            self.e_predictions = np.append([self.e_predictions, np.asarray(e_prediction, dtype=float)])
 
             
             self.Max_Outcome = np.max(self.Outcomes)
@@ -156,6 +170,7 @@ class Feature_Statistics(object):
         pickle.dump(self.Feature_Scores, file_handle)
         pickle.dump(self.Scaled_Scores,  file_handle)
         pickle.dump(self.Mode,           file_handle)
+        pickle.dump(self.uncert_pr,    file_handle)
 
         if self.Mode == 'classification':
             pickle.dump(self.f_predictions, file_handle)
@@ -180,6 +195,7 @@ class Feature_Statistics(object):
         self.Feature_Scores = pickle.load(file_handle)
         self.Scaled_Scores  = pickle.load(file_handle)
         self.Mode           = pickle.load(file_handle)
+        self.uncert_pr    = pickle.load(file_handle)
 
         if self.Mode == 'classification':
             self.f_predictions = pickle.load(file_handle)
@@ -492,9 +508,15 @@ class Feature_Statistics(object):
         
         fig, ax = plt.subplots()
             
-        plt.scatter(x = self.Outcomes, y = self.feopt,              label = 'feopt',  marker='o')
+        if self.feopt != None:
+            plt.scatter(x = self.Outcomes, y = self.feopt, label = 'feopt',  marker='o')
+            
         plt.scatter(x = self.Outcomes, y = self.f_predictions,      label = 'BB',  marker='x')
-        plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='+')
+        
+        if self.uncert_pr:
+            plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='+')
+        else:
+            plt.scatter(x = self.Outcomes, y = self.e_predictions,      label = 'Exp', marker='+')
                
         ax.set_xlabel('Y Test')
         ax.set_ylabel('Model Prediction')
@@ -538,8 +560,10 @@ class Feature_Statistics(object):
             
     def Reg_Fidelity(self):
         
-        exp_predictions = self.e_predictions[:,0]
-        exp_variance    = self.e_predictions[:,1]
+        if self.uncert_pr:
+            exp_predictions = self.e_predictions[:,0]
+        else:
+            exp_predictions = self.e_predictions
             
         y_f_differences = np.abs(self.Outcomes - self.f_predictions )
             
@@ -557,8 +581,9 @@ class Feature_Statistics(object):
 
         print('BB(x) - exp(x):     ', np.mean(f_e_differences), ' : ', np.var(f_e_differences),
               ' : ', np.max(f_e_differences))
-
-        print('Average exp(x) var: ', np.mean(exp_variance))
+        
+        if self.uncert_pr:
+            print('Average exp(x) var: ', np.mean(self.e_predictions[:,1]))
                 
 
     def Jaccard_Values(self, top_k=5):
@@ -636,7 +661,7 @@ class Feature_Statistics(object):
 
                 
     def Group_String(self):
-        return 'All Samples'
+        return 'All Features'
 
     def Print_Data(self):
         print(self.Feature_Scores)

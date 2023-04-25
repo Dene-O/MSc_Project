@@ -132,6 +132,7 @@ class UR_Model(object):
                 normalize=False,
                 #plot=False,
                 interval=1,
+                weight=None,
                 #verbosity=False,
                 #maximize=False
                 ):
@@ -175,9 +176,10 @@ class UR_Model(object):
             
             acq_function = FUR_W(X_init     = self.XN_train,
                                  std_x      = np.ones(len(self.feature_names)),
+                                 weight     = weight,
                                  n_samples  = n_samples,
                                  sample_opt = self.sampling_optimize,
-                                 bounds      = interval)
+                                 bounds     = interval)
         else:
             
             self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
@@ -186,9 +188,10 @@ class UR_Model(object):
             
             acq_function = FUR_W(X_init     = self.X_init,
                                  std_x      = self.std_x, 
+                                 weight     = weight,
                                  n_samples  = n_samples,
                                  sample_opt = self.sampling_optimize,
-                                 bounds      = interval)
+                                 bounds     = interval)
         
         
         for iter in range(max_iter):
@@ -262,7 +265,10 @@ class UR_Model(object):
 
         
     def KL_imp(self, show_plot=False):
-        return KLrel(X = self.X_train, model=self.gp_model, delta=1)
+        
+        self.KL_scores =  KLrel(X = self.X_train, model=self.gp_model, delta=1)
+        
+        return self.KL_scores
         
 
         
@@ -385,20 +391,20 @@ class UR_Model(object):
             
     def Lin_scores(self):
         
-        print('Shapes: ', self.X_init.shape, self.std_x.shape)
+#        print('Shapes: ', self.X_init.shape, self.std_x.shape)
         X_inits = np.repeat(self.X_init, self.X_train.shape[0] ,axis = 0)
         SDs     = np.repeat(self.std_x.reshape(1,-1),  self.X_train.shape[0] ,axis = 0)
         
         weights = 1 + np.square((self.X_train - X_inits) / SDs)
         
-        print('WS: ', weights.shape)
-        print('W:  ', weights)   
+#        print('WS: ', weights.shape)
+#        print('W:  ', weights)   
         
         min_value = np.min(weights)
         
         weights = np.mean((min_value / weights), axis = 1)
-        print('WS: ', weights.shape)
-        print('W:  ', weights)   
+#        print('WS: ', weights.shape)
+#        print('W:  ', weights)   
         
         LR = LinearRegression()
               
@@ -407,4 +413,45 @@ class UR_Model(object):
         self.lin_scores = LR.coef_
         
         return self.lin_scores
+
+    
+    def plot_scores(self, title, weights):
+        
+        fig, ax = plt.subplots()
+        
+        title = title  + ' W: ' + str(weights)
+        
+        ax.set_title(title)
+        
+        ax.set_xlabel('Feature')
+        ax.set_ylabel('Score')
+        
+        ax.set_ylim(-0.05,1.05)
+        
+        x = np.arange(self.N_features)
+
+        perm = self.perm_scores / np.max(self.perm_scores)
+        ax.plot(x, perm, label='Perm')           
+        
+        KL = self.KL_scores / np.max(self.KL_scores)
+        ax.plot(x, KL, label='KL')           
+        
+        Var = self.Var_scores / np.max(self.Var_scores)
+        ax.plot(x, Var, label='Var')           
+        
+        Del1 = self.del_1_scores / np.max(self.del_1_scores)
+        ax.plot(x, Del1, label='Del1')           
+        
+        Del2 = self.del_2_scores / np.max(self.del_2_scores)
+        ax.plot(x, Del2, label='Del2')           
+        
+        Lin = abs(self.lin_scores / np.max(abs(self.lin_scores)))
+        ax.plot(x, Lin, label='Lin')           
+        
+        ax.legend()
+        
+        fig.tight_layout()
+
+        plt.show()
+        
         

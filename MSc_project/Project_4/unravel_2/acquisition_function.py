@@ -8,7 +8,7 @@ from scipy.optimize  import Bounds
 
 class Acq_Base(object):
 
-    prime_sq_list = [9, 25, 49, 121, 169, 289, 361, 529, 841, 961, 1369]
+    prime_sq_list = [9, 25, 49, 121, 169, 289, 361, 529, 841, 961, 1369, 1681, 1849, 2209, 2809, 3481, 3721, 4489, 5041]
 
     def __init__(self, X_init):
         pass
@@ -42,6 +42,8 @@ class FUR_W(Acq_Base):
             
         else:
             self.weight = weight
+            
+#        print('WEIGHT: ', self.weight)
 
         if sample_opt == "Gaussian" or sample_opt == "gaussian":
             
