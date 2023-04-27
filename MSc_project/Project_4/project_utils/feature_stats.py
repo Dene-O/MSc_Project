@@ -158,7 +158,7 @@ class Feature_Statistics(object):
                               f_prediction  = self.f_predictions[row],
                               e_prediction  = self.e_predictions[row],
                               feopt         = self.feopt,         
-                              model         =self.Exp_Models[row])
+                              model         = self.Exp_Models[row])
 
       
 
@@ -584,6 +584,8 @@ class Feature_Statistics(object):
         
         if self.uncert_pr:
             print('Average exp(x) var: ', np.mean(self.e_predictions[:,1]))
+            
+        self.fidelity = np.mean(y_e_differences) / np.mean(np.abs(self.Outcomes))
                 
 
     def Jaccard_Values(self, top_k=5):
@@ -608,58 +610,66 @@ class Feature_Statistics(object):
             jaccard_distance = 1 - jaccard_similarity
             jaccard_distances.append(jaccard_distance)
 
+
+        self.jaccard_similarities = np.mean(jaccard_similarities)
         
-        print('Mean Jaccard Similarity: ', np.mean(jaccard_similarities))
+        print('Mean Jaccard Similarity: ', self.jaccard_similarities)
         print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
 
         
-    def Consistancy(self, X_train, sample_select='Latest'):
+    def Consistancy(self, plot=True, title=''):
         
-        std_range   = 2
-        mid_index   = 2 * std_range
-        index_range = 4 * std_range + 1
+        std_bound = 0.5
         
-        self.std = np.std(X_train, axis = 0)
+        mid_index   = 2
+        index_range = 2 * mid_index + 1
         
-        if sample_select == 'Latest':
-            sample = self.Num_Samples - 1
+        std = np.std(self.Features, axis = 0)
         
-        #elif sample_select == 'All':
-        #    sample = 'All'
+        y_p = np.empty([self.Num_Samples, index_range])
+        
+        for sample in range(self.Num_Samples):
             
-        else:
-            sample = sample_select
+            for idx in range(index_range):
+            
+                x_perturbed = self.Features[sample] + std_bound * (idx - mid_index) / mid_index * std 
+                print('XDIFF',self.Features[sample],x_perturbed)
+                
+                if self.uncert_pr:
+                    y_p[sample, idx] = self.Exp_Models[sample].predict(X = x_perturbed.reshape(1, -1)) - self.e_predictions[sample,0]
+                else:
+                    y_p[sample, idx] = self.Exp_Models[sample].predict(X = x_perturbed.reshape(1, -1)) - self.e_predictions[sample]
+                
+#                print(p, s,)
 
-        x_perturbed = np.empty([self.Num_Features, 2])
-        p_means     = np.empty([index_range])
-        p_std       = np.empty([index_range])
-        
-        p_means[mid_index], p_std[mid_index] = self.Exp_Models[sample].predict(X = self.Features[sample].reshape(1, -1), return_std = True)
-        p,s                                  = self.Exp_Models[sample].predict(X = self.Features[sample].reshape(1, -1), return_std = True)
-        print(p,s,mid_index)
-            
-        for std_x2 in range(1, mid_index + 1):
-            
-            x_perturbed_neg = self.Features[sample] - (std_x2 * self.std / 2)
-            x_perturbed_pos = self.Features[sample] + (std_x2 * self.std / 2)
-            
-            #p_means[mid_index - std_x2], p_std[mid_index - std_x2] = self.Exp_Models[sample].predict(X = x_perturbed_neg.reshape(1, -1), return_std = True)
-            #p_means[mid_index + std_x2], p_std[mid_index + std_x2] = self.Exp_Models[sample].predict(X = x_perturbed_pos.reshape(1, -1), return_std = True)
+             
 
-            p, s = self.Exp_Models[sample].predict(X = x_perturbed_neg.reshape(1, -1), return_std = True)
-            print(p,s,mid_index - std_x2)
-            p_means[mid_index - std_x2] = p
-            p_std[mid_index - std_x2] = s
-            p, s = self.Exp_Models[sample].predict(X = x_perturbed_pos.reshape(1, -1), return_std = True)
-            print(p,s, mid_index + std_x2)
-            p_means[mid_index + std_x2] = p
-            p_std[mid_index + std_x2] = s
-
-        print('SD \t Y pred\t Y var') 
-        for index in range(index_range):
-            print('%.1f:\t %.3f\t %.3f' % ((index-mid_index)/2, p_means[index], p_std[index]))
+#        print('SD \t Y pred\t Y var') 
+#        for index in range(index_range):
+#            print('%.1f:\t %.3f\t %.3f' % ((index-mid_index)/2, p_means[index], p_std[index]))
 
                 
+        self.y_p_mean = np.mean(y_p, axis = 0)
+        self.y_p_std  = np.std(y_p, axis = 0)
+
+        if plot:
+            fig, ax = plt.subplots()
+
+            title = title + ' Consistancey_Plot'
+       
+            x = (np.arange(index_range) - mid_index) / mid_index * std_bound
+            print('X: ', x, self.y_p_mean)
+            ax.plot(x, self.y_p_mean)
+        
+            ax.set_xlabel('SD Perturbation')
+            ax.set_ylabel('Prediction Change')
+            ax.set_title(title)
+
+            fig.tight_layout()
+            plt.show()
+        
+
+        
     def Group_String(self):
         return 'All Features'
 
@@ -694,9 +704,69 @@ class Feature_Statistics(object):
             return_ranges[index] = low_val + (index * increment)
 
         return return_ranges
+    
+    def add_Feature_Coeffs(self, Feature_Coeffs):
+        
+        self.Feature_Coeffs = Feature_Coeffs
+        
+        if self.Num_Samples > 0:        
+            self.calculate_Feature_Coeffs()
+            
+    
+    
+    def calculate_Feature_Coeffs(self):
+        
+        mean_scores = np.mean(self.Feature_Scores, axis = 0)
+        
+        self.coeffs_ratio = self.Feature_Coeffs / mean_scores
+        
+        print('Mean Scores: ', mean_scores)
+        print('Mean Coeffs: ', self.Feature_Coeffs)
+        
+    
+    
+    def delete_one(self):
 
-#############################################################################################
-# Abstract class for containg groups of stats
+        mean_scores = np.mean(self.Feature_Scores, axis = 0)
+                              
+        variance = np.zeros(self.Num_Features)
+        
+        for sample in range (self.Num_Samples):
+            
+            y = self.Exp_Models[sample].predict(self.Features[sample].reshape(1,-1))
+        
+            for feature in range(self.Num_Features):
+            
+                X_p = deepcopy(self.Features[sample])
+
+                X_p[feature] = 0
+            
+                X_p = X_p.reshape([1,self.Num_Features])
+                       
+                y_p = self.Exp_Models[sample].predict(X_p)
+           
+                variance[feature] = variance[feature] + np.square(y - y_p)
+            
+        
+        self.delete_one_var = variance / self.Num_Samples
+        
+        return self.delete_one_var
+    
+            
+    def Compare_Models (self, model_b):
+        
+        model_diff = self.Feature_Scores - model_b.Feature_Scores
+       
+        self.model_diff_mean = np.mean(model_diff, axis = 0) / np.mean(model_diff)
+        self.model_diff_std  = np.std(model_diff, axis = 0)  / np.mean(model_diff)
+        
+        print('Score Diff Mean: ', self.model_diff_mean)
+        print('Score Diff SD:   ', self.model_diff_std)
+
+
+            
+####################################################################################################
+    # Abstract class for containg groups of stats
 
 class Group_Container(object):        
         
