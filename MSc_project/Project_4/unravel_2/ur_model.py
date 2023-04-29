@@ -101,7 +101,7 @@ class UR_Model(object):
         return self.bbox_model
     
     def get_exp_model(self):
-        model_copy = deepcopy(self.gp_model)
+        model_copy = self.train_gaussian_process(self.X_train, self.y_train)
         return model_copy   
     
     def get_exp_L(self):
@@ -455,3 +455,25 @@ class UR_Model(object):
         plt.show()
         
         
+    def Y_Consistancy(self, N_points, std_bound=0.5):       
+        
+        mid_index   = int(N_points / 2)
+        index_range = 2 * mid_index + 1
+        print('N_points: ', index_range)
+                
+        y_p = np.empty([index_range,2])
+        
+        for idx in range(index_range):
+            
+            x_perturbed = std_bound * (idx - mid_index) / mid_index
+            
+            print(x_perturbed)
+            x_perturbed = self.X_init + x_perturbed * self.std_x
+                
+            print('X0   ',self.X_init)
+            print('XDIFF',x_perturbed)
+                
+            y_p[idx,:] = self.gp_model.predict(x_perturbed.reshape(1, -1), return_std = True)
+            print('Yp: ',y_p[idx,:])
+            
+        return y_p

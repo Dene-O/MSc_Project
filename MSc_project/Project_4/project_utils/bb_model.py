@@ -379,6 +379,8 @@ class BB_Model(object):
         self.X_train, self.X_test, self.y_train, self.y_test = \
           train_test_split(self.X, self.y, train_size=train_size, random_state=self.random_state)
         
+        self.X_train_std = np.std(self.X_train, axis = 0)
+        
 
     ####################################################################################################################
     def Read_File(self, filename):
@@ -535,7 +537,9 @@ class BB_Model(object):
     def get_Feature_Coeffs(self):
         return np.mean(self.Feature_Coeffs, axis = 0)
     
-    
+    ####################################################################################################################
+    def get_X_train_std(self):
+        return self.X_train_std
     
     
     

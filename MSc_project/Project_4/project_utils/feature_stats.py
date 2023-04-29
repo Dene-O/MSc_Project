@@ -17,7 +17,14 @@ class Feature_Statistics(object):
     colour_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:yellow']
     colour_max  = len(colour_list)
                           
-    def __init__(self, feature_names=None, mode='classification', classes=None, uncert_pr=True, file_handle=None):
+    def __init__(self,
+                 feature_names=None,
+                 mode='classification',
+                 classes=None, 
+                 X_train_std=1, 
+                 uncert_pr=True, 
+                 N_consistancy=0,
+                 file_handle=None):
 
         if file_handle == None:
             
@@ -29,7 +36,18 @@ class Feature_Statistics(object):
             self.Features       = np.empty([0, self.Num_Features], dtype=float)
             self.Exp_Models     = []
             self.feopt          = np.empty([0], dtype=np.uint8)
+            self.X_train_std    = X_train_std
             self.uncert_pr      = uncert_pr
+            
+            if N_consistancy == 0:
+                self.Consistancy = None
+            else:    
+                N_consistancy = int(N_consistancy / 2) * 2 + 1
+                
+                if uncert_pr:
+                    self.Consistancy = np.empty([0, N_consistancy, 2], dtype=float)
+                else:
+                    self.Consistancy = np.empty([0, N_consistancy], dtype=float)
 
         
             if mode == 'classification':
@@ -57,7 +75,7 @@ class Feature_Statistics(object):
 
 
            
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model, consistancy):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -93,6 +111,9 @@ class Feature_Statistics(object):
 
         self.Exp_Models.append(model)
 
+        if self.Consistancy == None:
+            self.Consistancy  = np.vstack([self.Consistancy,  consistancy])
+        
         self.Num_Samples += 1
         
         
@@ -617,58 +638,6 @@ class Feature_Statistics(object):
         print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
 
         
-    def Consistancy(self, plot=True, title=''):
-        
-        std_bound = 0.5
-        
-        mid_index   = 2
-        index_range = 2 * mid_index + 1
-        
-        std = np.std(self.Features, axis = 0)
-        
-        y_p = np.empty([self.Num_Samples, index_range])
-        
-        for sample in range(self.Num_Samples):
-            
-            for idx in range(index_range):
-            
-                x_perturbed = self.Features[sample] + std_bound * (idx - mid_index) / mid_index * std 
-                print('XDIFF',self.Features[sample],x_perturbed)
-                
-                if self.uncert_pr:
-                    y_p[sample, idx] = self.Exp_Models[sample].predict(X = x_perturbed.reshape(1, -1)) - self.e_predictions[sample,0]
-                else:
-                    y_p[sample, idx] = self.Exp_Models[sample].predict(X = x_perturbed.reshape(1, -1)) - self.e_predictions[sample]
-                
-#                print(p, s,)
-
-             
-
-#        print('SD \t Y pred\t Y var') 
-#        for index in range(index_range):
-#            print('%.1f:\t %.3f\t %.3f' % ((index-mid_index)/2, p_means[index], p_std[index]))
-
-                
-        self.y_p_mean = np.mean(y_p, axis = 0)
-        self.y_p_std  = np.std(y_p, axis = 0)
-
-        if plot:
-            fig, ax = plt.subplots()
-
-            title = title + ' Consistancey_Plot'
-       
-            x = (np.arange(index_range) - mid_index) / mid_index * std_bound
-            print('X: ', x, self.y_p_mean)
-            ax.plot(x, self.y_p_mean)
-        
-            ax.set_xlabel('SD Perturbation')
-            ax.set_ylabel('Prediction Change')
-            ax.set_title(title)
-
-            fig.tight_layout()
-            plt.show()
-        
-
         
     def Group_String(self):
         return 'All Features'
@@ -764,6 +733,47 @@ class Feature_Statistics(object):
         print('Score Diff SD:   ', self.model_diff_std)
 
 
+    def Consistancy(self, plot=True, title=''):       
+
+        if self.Consistancy == None: return
+    
+        N_Points = self.Consistancy.size[1]
+      
+        mid_index = int(N_Points / 2)
+        
+        y_pert_all = np.zeros(N_Points)
+        
+        for sample in range(self.Num_Samples):
+            
+            if uncert_pr:
+                y_mid  = self.Consistancy[sample, mid_index, 0]           
+                y_pert = self.Consistancy[sample, :, 0]
+            
+            else:    
+                y_mid  = self.Consistancy[sample, mid_index]
+                y_pert = self.Consistancy[sample, :]
+           
+            y_pert_all = y_pert_all + y_pert
+            
+        y_pert_mean = y_pert_all / self.Num_Samples    
+        
+        if plot:
+  
+            fig, ax = plt.subplots()
+
+            title = title + ' Consistancey_Plot'
+       
+            x = (np.arange(index_range) - mid_index) / mid_index * std_bound
+            #print('X: ', x, y_pert_mean)
+            ax.plot(x, y_pert_mean)
+        
+            ax.set_xlabel('SD Perturbation')
+            ax.set_ylabel('Prediction Change')
+            ax.set_title(title)
+
+            fig.tight_layout()
+            plt.show()
+            
             
 ####################################################################################################
     # Abstract class for containg groups of stats
