@@ -27,6 +27,8 @@ class Acq_Data_1D(Acq_Data):
 
     def __init__(self, X_Init, bounds, BB_Model=None):
 
+        print('Acq_Data_1D')
+        
        
         self.num_acq_points   = 100
         self.normalised_range = 1.5
@@ -179,6 +181,8 @@ class Acq_Data_1D_For(Acq_Data):
 
     def __init__(self):
         
+        print('Acq_Data_1D_For')
+        
         self.num_acq_points = 100
         
         self.norm_x_range = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
@@ -191,9 +195,7 @@ class Acq_Data_1D_For(Acq_Data):
         self.t1         = np.empty([0,self.num_acq_points])
         self.t2         = np.empty([0,self.num_acq_points])
 
-        self.min_acq = np.array([0])
-        self.min_t1  = np.array([0])
-        self.min_t2  = np.array([0])
+        self.min_acq_data = np.array([0, 3])
         
         self.fe_x0 = float("NaN")
 
@@ -204,6 +206,7 @@ class Acq_Data_1D_For(Acq_Data):
         
         #print('X ', X)
         
+        print('ITER:', self.N_iter_points)
         self.X_values = np.vstack([self.X_values, X.ravel()])
         self.y_values = np.vstack([self.y_values, y.ravel()])
         
@@ -214,6 +217,10 @@ class Acq_Data_1D_For(Acq_Data):
         for i in range(self.num_acq_points):
             if t1_t2:
                 acq_values[i], t1[i], t2[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1), return_terms=True)
+                if abs(np.mean(X) - np.mean(self.X_range[i])) < 0.015:
+                    print('XX: ', X, self.X_range[i])
+                    print('MIN:', acq_values[i], t1[i], t2[i])
+                    min_acqxx, min_t1xx, min_t2xx = acq_function._compute_acq(self.X_range[i].reshape(1,-1), return_terms=True)
             else:
                 acq_values[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1))
                 
@@ -223,11 +230,11 @@ class Acq_Data_1D_For(Acq_Data):
         self.t1         = np.vstack([self.t1,         t1])
         self.t2         = np.vstack([self.t2,         t2])
         
-        min_acq, min_t1, min_t2 = acq_function._compute_acq(X, return_terms=True)
+        min_acq_data = acq_function._compute_acq(X, return_terms=True)
+        print('MINXX:', min_acq_data)
+        
 
-        self.min_acq = np.append(self.min_acq, [min_acq])
-        self.min_t1  = np.append(self.min_t1,  [min_t1])
-        self.min_t2  = np.append(self.min_t2,  [min_t2])
+        self.min_acq_data = np.append(self.min_acq_data, [min_acq_data])
         
         self.fe_x0 = fe_x0
       
@@ -321,7 +328,8 @@ class Acq_Data_1D_For(Acq_Data):
 
         ax.plot(t1, t2, color = 'darkblue')
             
-        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'green', marker = 'D')
+        ax.scatter(self.min_acq_data[point,1], self.min_acq_data[point,2], color = 'green', marker = 'D')
+        #print('IN plot', self.min_acq_data[point,1:2])
         
                     
         fig.tight_layout()
@@ -334,6 +342,8 @@ class Acq_Data_2D(Acq_Data):
 
     def __init__(self, X_Init, bounds, BB_Model=None):
 
+        print('Acq_Data_2D')
+        
         ## START MATCH BB MODEL ##
         
         self.N_x1    = 100
@@ -530,6 +540,8 @@ class Acq_Data_2D_For(Acq_Data):
 
     def __init__(self):
 
+        print('Acq_Data_2D_For')
+        
         ## START MATCH BB MODEL ##
         
         n_features = 2
@@ -691,6 +703,9 @@ class Acq_Data_nD(Acq_Data):
 
     def __init__(self, X_Init, bounds, BB_Model=None):
         
+        print('Acq_Data_nD')
+        
+       
         self.num_acq_points   = 300
         self.normalised_range = 1.5
         
@@ -716,9 +731,7 @@ class Acq_Data_nD(Acq_Data):
         self.t1         = np.empty([0,self.num_acq_points])
         self.t2         = np.empty([0,self.num_acq_points])
 
-        self.min_acq = np.array([0])
-        self.min_t1  = np.array([0])
-        self.min_t2  = np.array([0])
+        self.min_acq_data = np.array([0,3])
         
         self.fe_x0 = float("NaN")
 
@@ -749,13 +762,9 @@ class Acq_Data_nD(Acq_Data):
         self.t2         = np.vstack([self.t2,         t2])
         
         
-        min_acq, min_t1, min_t2 = acq_function._compute_acq(X, return_terms=True)
+        min_acq_data = acq_function._compute_acq(X, return_terms=True)
 
-        self.min_acq = np.append(self.min_acq, [min_acq])
-        self.min_t1  = np.append(self.min_t1,  [min_t1])
-        self.min_t2  = np.append(self.min_t2,  [min_t2])
-        
-
+        self.min_acq_data = np.append(self.min_acq, [min_acq_data])
         
         self.fe_x0 = fe_x0
 
@@ -882,7 +891,7 @@ class Acq_Data_nD(Acq_Data):
             ax.scatter([self.t1[point, idx]], [self.t2[point, idx]], color = color, marker = 'o')
             
         
-        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'orange', marker = 'D')
+        ax.scatter(self.min_acq_data[point,1], self.min_acq_data[point,2], color = 'orange', marker = 'D')
         
                     
         fig.tight_layout()

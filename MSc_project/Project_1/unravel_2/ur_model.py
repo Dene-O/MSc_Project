@@ -8,6 +8,8 @@ from sklearn.gaussian_process.kernels import RBF
 
 from sklearn.inspection import permutation_importance
 
+from sklearn.linear_model import LinearRegression
+
 from matplotlib import pyplot as plt
 
 from unravel_2.acquisition_function import FUR_W
@@ -99,7 +101,7 @@ class UR_Model(object):
         return self.bbox_model
     
     def get_exp_model(self):
-        model_copy = deepcopy(self.gp_model)
+        model_copy = self.train_gaussian_process(self.X_train, self.y_train)
         return model_copy   
     
     def get_exp_L(self):
@@ -130,6 +132,7 @@ class UR_Model(object):
                 normalize=False,
                 #plot=False,
                 interval=1,
+                weight=None,
                 #verbosity=False,
                 #maximize=False
                 ):
@@ -152,7 +155,7 @@ class UR_Model(object):
         
         bounds[0,:] = self.X_init - self.std_x
         bounds[1,:] = self.X_init + self.std_x
-        print('bounds',bounds)
+        #print('bounds',bounds)
         
         if Dimension == 'One':
             self.acq_data = Acq_Data_1D(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
@@ -173,9 +176,10 @@ class UR_Model(object):
             
             acq_function = FUR_W(X_init     = self.XN_train,
                                  std_x      = np.ones(len(self.feature_names)),
+                                 weight     = weight,
                                  n_samples  = n_samples,
                                  sample_opt = self.sampling_optimize,
-                                 bounds      = interval)
+                                 bounds     = interval)
         else:
             
             self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
@@ -184,9 +188,10 @@ class UR_Model(object):
             
             acq_function = FUR_W(X_init     = self.X_init,
                                  std_x      = self.std_x, 
+                                 weight     = weight,
                                  n_samples  = n_samples,
                                  sample_opt = self.sampling_optimize,
-                                 bounds      = interval)
+                                 bounds     = interval)
         
         
         for iter in range(max_iter):
@@ -242,18 +247,17 @@ class UR_Model(object):
         
         results = permutation_importance(self.gp_model, self.X_train, self.y_train, scoring='neg_mean_squared_error')
         
-        scores = results.importances_mean
+        self.perm_scores = results.importances_mean
         
-        #print(scores)
 
-        for i,v in enumerate(scores):
-            print('%s:\t %.5f' % (self.feature_names[i],v))
+#        for i,v in enumerate(scores):
+#            print('%s:\t %.5f' % (self.feature_names[i],v))
             
         # plot feature importance
         if show_plot:
-            self.Plot(scores)
+            self.Plot(self.perm_scores)
             
-        return scores             
+        return self.perm_scores             
 
     def get_acq_data(self):
         return self.acq_data
@@ -261,12 +265,18 @@ class UR_Model(object):
 
         
     def KL_imp(self, show_plot=False):
-        return KLrel(X = self.X_train, model=self.gp_model, delta=1)
+        
+        self.KL_scores =  KLrel(X = self.X_train, model=self.gp_model, delta=1)
+        
+        return self.KL_scores
         
 
         
     def Var_imp(self, show_plot=False):
-        return VARrel(X=self.X_train, model=self.gp_model, nquadr=12, pointwise = False)
+        
+        self.Var_scores = VARrel(X=self.X_train, model=self.gp_model, nquadr=12, pointwise = False)
+        
+        return self.Var_scores
     
         
 
@@ -277,7 +287,7 @@ class UR_Model(object):
         n = X.shape[0]
         p = X.shape[1]
         
-        print(X.shape)
+        #print(X.shape)
         
         jitter = 1e-15
     
@@ -313,13 +323,13 @@ class UR_Model(object):
         # remove the perturbation
         x_n[dim,:] = x_n[dim,:] - deltax
 
-        score = np.mean(relevances, axis=0)
+        self.KL_scores = np.mean(relevances, axis=0)
 
-        return score
+        return self.KL_scores
     
     
 
-    def X_rel(self):
+    def del_1_rel(self):
         
         variance = np.empty(self.N_features)
         
@@ -338,11 +348,13 @@ class UR_Model(object):
             variance[feature] = np.square(y - y_p)
             
         
-        return variance / np.mean(variance)
+        self.del_1_scores = variance / np.mean(variance)
+        
+        return self.del_1_scores
             
             
             
-    def X2_rel(self):
+    def del_2_rel(self):
         
         variance = np.empty(self.N_features)
         
@@ -372,8 +384,97 @@ class UR_Model(object):
             variance[feature_outer] = np.square(y - y_p)
             
         
-        return variance / np.mean(variance)
-            
-            
-            
+        self.del_2_scores = variance / np.mean(variance)
         
+        return self.del_2_scores
+            
+            
+    def Lin_scores(self):
+        
+#        print('Shapes: ', self.X_init.shape, self.std_x.shape)
+        X_inits = np.repeat(self.X_init, self.X_train.shape[0] ,axis = 0)
+        SDs     = np.repeat(self.std_x.reshape(1,-1),  self.X_train.shape[0] ,axis = 0)
+        
+        weights = 1 + np.square((self.X_train - X_inits) / SDs)
+        
+#        print('WS: ', weights.shape)
+#        print('W:  ', weights)   
+        
+        min_value = np.min(weights)
+        
+        weights = np.mean((min_value / weights), axis = 1)
+#        print('WS: ', weights.shape)
+#        print('W:  ', weights)   
+        
+        LR = LinearRegression()
+              
+        LR.fit(self.X_train, self.y_train, weights)
+        
+        self.lin_scores = LR.coef_
+        
+        return self.lin_scores
+
+    
+    def plot_scores(self, title, weights):
+        
+        fig, ax = plt.subplots()
+        
+        title = title  + ' W: ' + str(weights)
+        
+        ax.set_title(title)
+        
+        ax.set_xlabel('Feature')
+        ax.set_ylabel('Score')
+        
+        ax.set_ylim(-0.05,1.05)
+        
+        x = np.arange(self.N_features)
+
+        perm = self.perm_scores / np.max(self.perm_scores)
+        ax.plot(x, perm, label='Perm')           
+        
+        KL = self.KL_scores / np.max(self.KL_scores)
+        ax.plot(x, KL, label='KL')           
+        
+        Var = self.Var_scores / np.max(self.Var_scores)
+        ax.plot(x, Var, label='Var')           
+        
+        Del1 = self.del_1_scores / np.max(self.del_1_scores)
+        ax.plot(x, Del1, label='Del1')           
+        
+        Del2 = self.del_2_scores / np.max(self.del_2_scores)
+        ax.plot(x, Del2, label='Del2')           
+        
+        Lin = abs(self.lin_scores / np.max(abs(self.lin_scores)))
+        ax.plot(x, Lin, label='Lin')           
+        
+        ax.legend()
+        
+        fig.tight_layout()
+
+        plt.show()
+        
+        
+    def Y_Consistancy(self, N_points, std_bound):       
+        
+        mid_index   = int(N_points / 2)
+        index_range = 2 * mid_index + 1
+#        print('N_points: ', index_range)
+                
+        y_p = np.empty([index_range,2])
+        
+        for idx in range(index_range):
+            
+            x_perturbed = std_bound * (idx - mid_index) / mid_index
+            
+#            print(x_perturbed)
+            x_perturbed = self.X_init + x_perturbed * self.std_x
+                
+#            print('X0   ',self.X_init)
+#            print('XDIFF',x_perturbed)
+                
+            y_p[idx,:] = self.gp_model.predict(x_perturbed.reshape(1, -1), return_std = True)
+#            print('Yp: ',y_p[idx,:])
+
+#        print('YP: ',y_p)
+        return y_p

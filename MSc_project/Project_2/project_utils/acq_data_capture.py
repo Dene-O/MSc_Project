@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from scipy.stats.qmc import LatinHypercube
+
 from project_utils.bb_model import BB_Model
 
 
@@ -27,8 +29,9 @@ class Acq_Data_1D(Acq_Data):
 
     def __init__(self, X_Init, bounds, BB_Model=None):
 
+        print('Acq_Data_1D')
+        
        
-        self.num_acq_points   = 100
         self.normalised_range = 1.5
         
         self.X_Init     = X_Init
@@ -179,6 +182,8 @@ class Acq_Data_1D_For(Acq_Data):
 
     def __init__(self):
         
+        print('Acq_Data_1D_For')
+        
         self.num_acq_points = 100
         
         self.norm_x_range = np.arange(0.0, 1.0, 1.0/self.num_acq_points)
@@ -191,9 +196,8 @@ class Acq_Data_1D_For(Acq_Data):
         self.t1         = np.empty([0,self.num_acq_points])
         self.t2         = np.empty([0,self.num_acq_points])
 
-        self.min_acq = np.array([0])
-        self.min_t1  = np.array([0])
-        self.min_t2  = np.array([0])
+        self.min_acq_data = np.empty([0, 3])
+        print('SHAPE0: ',self.min_acq_data.shape)
         
         self.fe_x0 = float("NaN")
 
@@ -203,7 +207,8 @@ class Acq_Data_1D_For(Acq_Data):
     def new_X(self, X, y, fe_x0, acq_function, t1_t2=False):
         
         #print('X ', X)
-        
+
+        print('ITER:', self.N_iter_points)
         self.X_values = np.vstack([self.X_values, X.ravel()])
         self.y_values = np.vstack([self.y_values, y.ravel()])
         
@@ -214,6 +219,10 @@ class Acq_Data_1D_For(Acq_Data):
         for i in range(self.num_acq_points):
             if t1_t2:
                 acq_values[i], t1[i], t2[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1), return_terms=True)
+                if abs(np.mean(X) - np.mean(self.X_range[i])) < 0.015:
+                    print('XX: ', X, self.X_range[i])
+                    print('MIN:', acq_values[i], t1[i], t2[i])
+                    min_acqxx, min_t1xx, min_t2xx = acq_function._compute_acq(self.X_range[i].reshape(1,-1), return_terms=True)
             else:
                 acq_values[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1))
                 
@@ -223,11 +232,12 @@ class Acq_Data_1D_For(Acq_Data):
         self.t1         = np.vstack([self.t1,         t1])
         self.t2         = np.vstack([self.t2,         t2])
         
-        min_acq, min_t1, min_t2 = acq_function._compute_acq(X, return_terms=True)
-
-        self.min_acq = np.append(self.min_acq, [min_acq])
-        self.min_t1  = np.append(self.min_t1,  [min_t1])
-        self.min_t2  = np.append(self.min_t2,  [min_t2])
+        min_acq_data = acq_function._compute_acq(X, return_terms=True)
+        print('MINXX:', min_acq_data)
+        
+        min_acq_data = np.array(min_acq_data).reshape(1,3)
+        self.min_acq_data = np.vstack([self.min_acq_data, min_acq_data])
+        print('SHAPE: ',self.min_acq_data.shape)
         
         self.fe_x0 = fe_x0
       
@@ -321,8 +331,9 @@ class Acq_Data_1D_For(Acq_Data):
 
         ax.plot(t1, t2, color = 'darkblue')
             
-        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'green', marker = 'D')
-        
+        ax.scatter(self.min_acq_data[point,1], self.min_acq_data[point,2], color = 'green', marker = 'D')
+        #print('IN plot', self.min_acq_data[point,1:2])
+                
                     
         fig.tight_layout()
 
@@ -334,6 +345,8 @@ class Acq_Data_2D(Acq_Data):
 
     def __init__(self, X_Init, bounds, BB_Model=None):
 
+        print('Acq_Data_2D')
+        
         ## START MATCH BB MODEL ##
         
         self.N_x1    = 100
@@ -530,6 +543,8 @@ class Acq_Data_2D_For(Acq_Data):
 
     def __init__(self):
 
+        print('Acq_Data_2D_For')
+        
         ## START MATCH BB MODEL ##
         
         n_features = 2
@@ -691,8 +706,11 @@ class Acq_Data_nD(Acq_Data):
 
     def __init__(self, X_Init, bounds, BB_Model=None):
         
-        self.num_acq_points   = 300
-        self.normalised_range = 1.5
+        print('Acq_Data_nD')
+        
+       
+        self.num_acq_points   = 400
+        self.normalised_range = 1
         
         self.X_Init     = X_Init
         self.N_features = X_Init.size
@@ -712,19 +730,16 @@ class Acq_Data_nD(Acq_Data):
             
         self.X_values   = np.empty([0,self.N_features])
         self.y_values   = np.empty([0,1])
-        self.acq_values = np.empty([0,self.num_acq_points])
-        self.t1         = np.empty([0,self.num_acq_points])
-        self.t2         = np.empty([0,self.num_acq_points])
+        self.acq_values = np.empty([0,self.num_acq_points,2])
+        self.t1         = np.empty([0,self.num_acq_points,2])
+        self.t2         = np.empty([0,self.num_acq_points,2])
 
-        self.min_acq = np.array([0])
-        self.min_t1  = np.array([0])
-        self.min_t2  = np.array([0])
+        self.min_acq_data = np.empty([0, 3])
+        self.X_0_acq_data = np.empty([0, 3])
         
         self.fe_x0 = float("NaN")
 
         self.N_iter_points = 0
-        
-        
         
         
     def new_X(self, X, y, fe_x0, acq_function, t1_t2=False):
@@ -732,15 +747,24 @@ class Acq_Data_nD(Acq_Data):
         self.X_values = np.vstack([self.X_values, X.ravel()])
         self.y_values = np.vstack([self.y_values, y.ravel()])
         
-        acq_values   = np.empty([self.num_acq_points])
-        t1           = np.empty([self.num_acq_points])
-        t2           = np.empty([self.num_acq_points])
-    
+        acq_values   = np.empty([1,self.num_acq_points,2])
+        t1           = np.empty([1,self.num_acq_points,2])
+        t2           = np.empty([1,self.num_acq_points,2])
+
+        # Use a Latin Hyper cube
+        sampler = LatinHypercube(d = self.N_features, strength = 1)
+
+        sampled_dist = sampler.random(n = self.num_acq_points) * self.normalised_range - (self.normalised_range / 2)
+        
+        sampled_dist = sampled_dist * self.bounds_range + self.bounds_mean
+        
         for i in range(self.num_acq_points):
             if t1_t2:
-                acq_values[i], t1[i], t2[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1), return_terms=True)
+                acq_values[0,i,0], t1[0,i,0], t2[0,i,0] = acq_function._compute_acq(self.X_range[i,:].reshape(1,-1), return_terms=True)
+                acq_values[0,i,1], t1[0,i,1], t2[0,i,1] = acq_function._compute_acq(sampled_dist[i,:].reshape(1,-1), return_terms=True)
             else:
-                acq_values[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1))
+                acq_values[0,i,0] = acq_function._compute_acq(self.X_range[i,:].reshape(1,-1), return_terms=True)
+                acq_values[0,i,1] = acq_function._compute_acq(sampled_dist[i,:].reshape(1,-1))
                 
                 
         
@@ -749,16 +773,15 @@ class Acq_Data_nD(Acq_Data):
         self.t2         = np.vstack([self.t2,         t2])
         
         
-        min_acq, min_t1, min_t2 = acq_function._compute_acq(X, return_terms=True)
+        min_acq_data = acq_function._compute_acq(X, return_terms=True)
 
-        self.min_acq = np.append(self.min_acq, [min_acq])
-        self.min_t1  = np.append(self.min_t1,  [min_t1])
-        self.min_t2  = np.append(self.min_t2,  [min_t2])
+        self.min_acq_data =np.vstack([self.min_acq_data, min_acq_data])
         
+        X_0_acq_data = acq_function._compute_acq(self.X_Init, return_terms=True)
 
+        self.X_0_acq_data =np.vstack([self.X_0_acq_data, X_0_acq_data])
         
         self.fe_x0 = fe_x0
-
         
         self.N_iter_points = self.N_iter_points + 1
 
@@ -815,11 +838,11 @@ class Acq_Data_nD(Acq_Data):
         color = 'red'
         ax2.tick_params(axis='y', labelcolor=color)
         ax2.set_ylabel('Acquisition Function')
-        ax2.plot(self.norm_x_range, self.acq_values[p], color=color,       label='FUR W')
-        ax2.plot(self.norm_x_range, self.t1[p],         color='lime',      label='T1')
-        ax2.plot(self.norm_x_range, self.t2[p],         color='darkgreen', label='T2')
+        ax2.plot(self.norm_x_range, self.acq_values[p,:,0], color=color,       label='FUR W')
+        ax2.plot(self.norm_x_range, self.t1[p,:,0],         color='lime',      label='T1')
+        ax2.plot(self.norm_x_range, self.t2[p,:,0],         color='darkgreen', label='T2')
+ 
         ax2.legend()
-
 
         fig.tight_layout()
         
@@ -866,27 +889,16 @@ class Acq_Data_nD(Acq_Data):
         
         ax.set_xlabel('t1')
         ax.set_ylabel('t2')
-        
-#        for point in range(self.N_iter_points):
-            
-#            col_idx = int(float(point * len(Acq_Data.color_list)) / float(self.N_iter_points))
+                   
+        ax.plot(self.t1[point,:,0], self.t2[point,:,0], color = 'green', linewidth = 2, label = 'SD Rng')
+        ax.scatter(self.t1[point,:,1], self.t2[point,:,1], color = 'darkblue',  marker = '.', label = 'LHC')
+                  
+        ax.scatter(self.min_acq_data[point,1], self.min_acq_data[point,2], color = 'orange', marker = 'D', label = 'X Next')
+        ax.scatter(self.X_0_acq_data[point,1], self.X_0_acq_data[point,2], color = 'red',    marker = 'D', label = 'X Init')
 
-#        color   = Acq_Data.color_list[col_idx]
-            
-        for idx in range(self.num_acq_points):
-        
-            col_idx = int(float(idx * len(Acq_Data.color_list)) / float(self.num_acq_points))
-
-            color   = Acq_Data.color_list[col_idx]
-            
-            ax.scatter([self.t1[point, idx]], [self.t2[point, idx]], color = color, marker = 'o')
-            
-        
-        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'orange', marker = 'D')
-        
-                    
         fig.tight_layout()
 
+        ax.legend()
         plt.show()
         
     

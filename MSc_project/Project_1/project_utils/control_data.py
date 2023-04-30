@@ -167,7 +167,7 @@ class Control_Data(object):
     
             
     # This function returns the sum of the feature values multipled by a fluctuating seed value
-    def Regression_2(self, row):
+    def Synthetic_Reg(self, row):
     
         seed            = 1
         seed_limit      = 3

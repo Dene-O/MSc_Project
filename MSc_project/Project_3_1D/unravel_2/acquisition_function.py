@@ -104,7 +104,7 @@ class FUR_W(Acq_Base):
         
         t1 = self.weight[0] * -np.linalg.norm(x - self.X_init - self.std_x * self.delta / np.log(self.iter))
 
-        t2 = self.weight[1] * std_p
+        t2 = self.weight[1] * std_p.item()
         
         f_acqu = t1 + t2
                                          

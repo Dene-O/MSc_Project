@@ -149,7 +149,7 @@ class BB_Model(object):
                  
             
         ################################################################################################################
-        elif dataset == 'Regression_2' or dataset == 'regression_2':
+        elif dataset == 'Synthetic_Reg' or dataset == 'Synthetic_Reg':
             
             self.mode = 'regression'
             self.catagorical_features = []
