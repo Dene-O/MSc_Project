@@ -19,35 +19,6 @@ class Acq_Data(object):
         
     def plot_all(self): pass
 
-    def plot_t1_t2(self, point):
-        
-        fig, ax = plt.subplots()
-        
-        ax.set_xlabel('t1')
-        ax.set_ylabel('t2')
-        
-#        for point in range(self.N_iter_points):
-            
-#            col_idx = int(float(point * len(Acq_Data.color_list)) / float(self.N_iter_points))
-
-#        color   = Acq_Data.color_list[col_idx]
-            
-        for idx in range(self.num_acq_points):
-        
-            col_idx = int(float(idx * len(Acq_Data.color_list)) / float(self.num_acq_points))
-
-            color   = Acq_Data.color_list[col_idx]
-            
-            ax.scatter([self.t1[point, idx]], [self.t2[point, idx]], color = color, marker = 'o')
-            
-        
-        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'orange', marker = 'D')
-        
-                    
-        fig.tight_layout()
-
-        plt.show()
-        
 
 
 ###############################################################################################################################        
@@ -201,6 +172,7 @@ class Acq_Data_1D(Acq_Data):
     def get_fe_x0(self):
         return self.fe_x0
 
+
 ###############################################################################################################################        
     
 class Acq_Data_1D_For(Acq_Data):
@@ -219,6 +191,10 @@ class Acq_Data_1D_For(Acq_Data):
         self.t1         = np.empty([0,self.num_acq_points])
         self.t2         = np.empty([0,self.num_acq_points])
 
+        self.min_acq = np.array([0])
+        self.min_t1  = np.array([0])
+        self.min_t2  = np.array([0])
+        
         self.fe_x0 = float("NaN")
 
         self.N_iter_points = 0
@@ -247,9 +223,14 @@ class Acq_Data_1D_For(Acq_Data):
         self.t1         = np.vstack([self.t1,         t1])
         self.t2         = np.vstack([self.t2,         t2])
         
-        self.fe_x0 = fe_x0
+        min_acq, min_t1, min_t2 = acq_function._compute_acq(X, return_terms=True)
 
+        self.min_acq = np.append(self.min_acq, [min_acq])
+        self.min_t1  = np.append(self.min_t1,  [min_t1])
+        self.min_t2  = np.append(self.min_t2,  [min_t2])
         
+        self.fe_x0 = fe_x0
+      
         self.N_iter_points = self.N_iter_points + 1
 
         
@@ -328,6 +309,25 @@ class Acq_Data_1D_For(Acq_Data):
     def get_fe_x0(self):
         return self.fe_x0
 
+    def plot_t1_t2(self, point):
+        
+        fig, ax = plt.subplots()
+        
+        ax.set_xlabel('t1')
+        ax.set_ylabel('t2')
+        
+        t1 = self.t1[point,:]
+        t2 = self.t2[point,:]
+
+        ax.plot(t1, t2, color = 'darkblue')
+            
+        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'green', marker = 'D')
+        
+                    
+        fig.tight_layout()
+
+        plt.show()
+        
 ###############################################################################################################################        
     
 class Acq_Data_2D(Acq_Data):
@@ -860,6 +860,35 @@ class Acq_Data_nD(Acq_Data):
 
         plt.show()
                             
+    def plot_t1_t2(self, point):
+        
+        fig, ax = plt.subplots()
+        
+        ax.set_xlabel('t1')
+        ax.set_ylabel('t2')
+        
+#        for point in range(self.N_iter_points):
+            
+#            col_idx = int(float(point * len(Acq_Data.color_list)) / float(self.N_iter_points))
+
+#        color   = Acq_Data.color_list[col_idx]
+            
+        for idx in range(self.num_acq_points):
+        
+            col_idx = int(float(idx * len(Acq_Data.color_list)) / float(self.num_acq_points))
+
+            color   = Acq_Data.color_list[col_idx]
+            
+            ax.scatter([self.t1[point, idx]], [self.t2[point, idx]], color = color, marker = 'o')
+            
+        
+        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'orange', marker = 'D')
+        
+                    
+        fig.tight_layout()
+
+        plt.show()
+        
     
     def get_fe_x0(self):
         return self.fe_x0

@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from project_utils.uncertainty_plot import Add_Uncertainty_Plot
+
+
 from copy import deepcopy
 
 from itertools import combinations
@@ -40,14 +43,14 @@ class Feature_Statistics(object):
             self.uncert_pr      = uncert_pr
             
             if N_consistancy == 0:
-                self.Consistancy = None
+                self.Consistancy_Data = None
             else:    
                 N_consistancy = int(N_consistancy / 2) * 2 + 1
                 
                 if uncert_pr:
-                    self.Consistancy = np.empty([0, N_consistancy, 2], dtype=float)
+                    self.Consistancy_Data = np.empty([0, N_consistancy, 2], dtype=float)
                 else:
-                    self.Consistancy = np.empty([0, N_consistancy], dtype=float)
+                    self.Consistancy_Data = np.empty([0, N_consistancy], dtype=float)
 
         
             if mode == 'classification':
@@ -75,7 +78,7 @@ class Feature_Statistics(object):
 
 
            
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model, consistancy):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model, consistancy=None):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -111,8 +114,8 @@ class Feature_Statistics(object):
 
         self.Exp_Models.append(model)
 
-        if self.Consistancy == None:
-            self.Consistancy  = np.vstack([self.Consistancy,  consistancy])
+        if not isinstance(consistancy ,type(None)):
+            self.Consistancy_Data = np.vstack([self.Consistancy_Data,  consistancy.reshape(1,-1,2)])
         
         self.Num_Samples += 1
         
@@ -185,13 +188,14 @@ class Feature_Statistics(object):
 
     def Write_To_File(self, file_handle):
 
-        pickle.dump(self.Feature_Names,  file_handle)
-        pickle.dump(self.Num_Features,   file_handle)  
-        pickle.dump(self.Num_Samples,    file_handle)  
-        pickle.dump(self.Feature_Scores, file_handle)
-        pickle.dump(self.Scaled_Scores,  file_handle)
-        pickle.dump(self.Mode,           file_handle)
-        pickle.dump(self.uncert_pr,    file_handle)
+        pickle.dump(self.Feature_Names,    file_handle)
+        pickle.dump(self.Num_Features,     file_handle)  
+        pickle.dump(self.Num_Samples,      file_handle)  
+        pickle.dump(self.Feature_Scores,   file_handle)
+        pickle.dump(self.Scaled_Scores,    file_handle)
+        pickle.dump(self.Mode,             file_handle)
+        pickle.dump(self.uncert_pr,        file_handle)
+        pickle.dump(self.Consistancy_Data, file_handle)
 
         if self.Mode == 'classification':
             pickle.dump(self.f_predictions, file_handle)
@@ -210,13 +214,14 @@ class Feature_Statistics(object):
 
     def Read_From_File(self, file_handle):
               
-        self.Feature_Names  = pickle.load(file_handle)  
-        self.Num_Features   = pickle.load(file_handle)  
-        self.Num_Samples    = pickle.load(file_handle)  
-        self.Feature_Scores = pickle.load(file_handle)
-        self.Scaled_Scores  = pickle.load(file_handle)
-        self.Mode           = pickle.load(file_handle)
-        self.uncert_pr    = pickle.load(file_handle)
+        self.Feature_Names    = pickle.load(file_handle)  
+        self.Num_Features     = pickle.load(file_handle)  
+        self.Num_Samples      = pickle.load(file_handle)  
+        self.Feature_Scores   = pickle.load(file_handle)
+        self.Scaled_Scores    = pickle.load(file_handle)
+        self.Mode             = pickle.load(file_handle)
+        self.uncert_pr        = pickle.load(file_handle)
+        self.Consistancy_Data = pickle.load(file_handle)
 
         if self.Mode == 'classification':
             self.f_predictions = pickle.load(file_handle)
@@ -733,29 +738,34 @@ class Feature_Statistics(object):
         print('Score Diff SD:   ', self.model_diff_std)
 
 
-    def Consistancy(self, plot=True, title=''):       
+    def Consistancy(self, std_bound, plot=True, title=''):       
 
-        if self.Consistancy == None: return
-    
-        N_Points = self.Consistancy.size[1]
+        N_Points = np.size(self.Consistancy_Data, axis=1)
+        print('N_Points: ',N_Points)
       
         mid_index = int(N_Points / 2)
         
-        y_pert_all = np.zeros(N_Points)
+        y_pert_all   = np.zeros(N_Points)
+        y_uncert_all = np.zeros(N_Points)
         
         for sample in range(self.Num_Samples):
             
-            if uncert_pr:
-                y_mid  = self.Consistancy[sample, mid_index, 0]           
-                y_pert = self.Consistancy[sample, :, 0]
+            if self.uncert_pr:
+                y_mid    = self.Consistancy_Data[sample, mid_index, 0]           
+                y_pert   = self.Consistancy_Data[sample, :, 0]
+                y_uncert = self.Consistancy_Data[sample, :, 1]
+                
+                y_uncert_all = y_uncert_all + y_uncert / y_mid
             
             else:    
-                y_mid  = self.Consistancy[sample, mid_index]
-                y_pert = self.Consistancy[sample, :]
+                y_mid  = self.Consistancy_Data[sample, mid_index]
+                y_pert = self.Consistancy_Data[sample, :]
            
-            y_pert_all = y_pert_all + y_pert
+            y_pert_all = y_pert_all + ((y_pert - y_mid) / y_mid)
             
-        y_pert_mean = y_pert_all / self.Num_Samples    
+        y_pert_mean   = y_pert_all   / self.Num_Samples
+        
+        y_uncert_mean = y_uncert_all / self.Num_Samples
         
         if plot:
   
@@ -763,12 +773,16 @@ class Feature_Statistics(object):
 
             title = title + ' Consistancey_Plot'
        
-            x = (np.arange(index_range) - mid_index) / mid_index * std_bound
+            x = (np.arange(N_Points) - mid_index) / mid_index * std_bound
             #print('X: ', x, y_pert_mean)
-            ax.plot(x, y_pert_mean)
+            
+            if self.uncert_pr:
+                Add_Uncertainty_Plot(ax, x, y_pert_mean, y_uncert_mean)
+            else:
+                ax.plot(x, y_pert_mean)
         
             ax.set_xlabel('SD Perturbation')
-            ax.set_ylabel('Prediction Change')
+            ax.set_ylabel('Normalised Prediction Change')
             ax.set_title(title)
 
             fig.tight_layout()

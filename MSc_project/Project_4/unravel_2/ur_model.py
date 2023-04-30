@@ -455,11 +455,11 @@ class UR_Model(object):
         plt.show()
         
         
-    def Y_Consistancy(self, N_points, std_bound=0.5):       
+    def Y_Consistancy(self, N_points, std_bound):       
         
         mid_index   = int(N_points / 2)
         index_range = 2 * mid_index + 1
-        print('N_points: ', index_range)
+#        print('N_points: ', index_range)
                 
         y_p = np.empty([index_range,2])
         
@@ -467,13 +467,14 @@ class UR_Model(object):
             
             x_perturbed = std_bound * (idx - mid_index) / mid_index
             
-            print(x_perturbed)
+#            print(x_perturbed)
             x_perturbed = self.X_init + x_perturbed * self.std_x
                 
-            print('X0   ',self.X_init)
-            print('XDIFF',x_perturbed)
+#            print('X0   ',self.X_init)
+#            print('XDIFF',x_perturbed)
                 
             y_p[idx,:] = self.gp_model.predict(x_perturbed.reshape(1, -1), return_std = True)
-            print('Yp: ',y_p[idx,:])
-            
+#            print('Yp: ',y_p[idx,:])
+
+#        print('YP: ',y_p)
         return y_p
