@@ -194,17 +194,13 @@ class Acq_Data_1D_For(Acq_Data):
         self.t1         = np.empty([0,self.num_acq_points])
         self.t2         = np.empty([0,self.num_acq_points])
 
-        self.min_acq = np.array([0])
-        self.min_t1  = np.array([0])
-        self.min_t2  = np.array([0])
-        
-        self.min_acqxx = np.array([0])
-        self.min_t1xx  = np.array([0])
-        self.min_t2xx  = np.array([0])
+        self.min_acq_data = np.array([0, 3])
         
         self.fe_x0 = float("NaN")
 
         self.N_iter_points = 0
+        
+        print('ZZZZZZZZZZZZZ',self.t1, self.min_t2)
         
         
     def new_X(self, X, y, fe_x0, acq_function, t1_t2=False):
@@ -235,19 +231,11 @@ class Acq_Data_1D_For(Acq_Data):
         self.t1         = np.vstack([self.t1,         t1])
         self.t2         = np.vstack([self.t2,         t2])
         
-        min_acq, min_t1, min_t2 = acq_function._compute_acq(X, return_terms=True)
-        print('MINXX:', min_acq, min_t1, min_t2)
+        min_acq_data = acq_function._compute_acq(X, return_terms=True)
+        print('MINXX:', min_acq_data)
         
 
-        self.min_acq = np.append(self.min_acq, [min_acq])
-        self.min_t1  = np.append(self.min_t1,  [min_t1])
-        self.min_t2  = np.append(self.min_t2,  [min_t2])
-        
-        self.min_acqxx = np.append(self.min_acqxx, [min_acqxx])
-        self.min_t1xx  = np.append(self.min_t1xx,  [min_t1xx])
-        self.min_t2xx  = np.append(self.min_t2xx,  [min_t2xx])
-        
-        print('NPOINT:',self.min_t1xx.size)
+        self.min_acq_data = np.append(self.min_acq_data, [min_acq_data])
         
         self.fe_x0 = fe_x0
       
@@ -341,11 +329,9 @@ class Acq_Data_1D_For(Acq_Data):
 
         ax.plot(t1, t2, color = 'darkblue')
             
-        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'green', marker = 'D')
-        print('IN plot', self.min_t1[point], self.min_t2[point])
-        
-        ax.scatter(self.min_t1xx[point], self.min_t2xx[point], color = 'green', marker = 'D')
-        
+        ax.scatter(self.min_acq_data[point,1], self.min_acq_data[point,2], color = 'green', marker = 'D')
+        #print('IN plot', self.min_acq_data[point,1:2])
+                
                     
         fig.tight_layout()
 
@@ -746,9 +732,7 @@ class Acq_Data_nD(Acq_Data):
         self.t1         = np.empty([0,self.num_acq_points])
         self.t2         = np.empty([0,self.num_acq_points])
 
-        self.min_acq = np.array([0])
-        self.min_t1  = np.array([0])
-        self.min_t2  = np.array([0])
+        self.min_acq_data = np.array([0,3])
         
         self.fe_x0 = float("NaN")
 
@@ -779,16 +763,11 @@ class Acq_Data_nD(Acq_Data):
         self.t2         = np.vstack([self.t2,         t2])
         
         
-        min_acq, min_t1, min_t2 = acq_function._compute_acq(X, return_terms=True)
+        min_acq_data = acq_function._compute_acq(X, return_terms=True)
 
-        self.min_acq = np.append(self.min_acq, [min_acq])
-        self.min_t1  = np.append(self.min_t1,  [min_t1])
-        self.min_t2  = np.append(self.min_t2,  [min_t2])
-        
-
+        self.min_acq_data = np.append(self.min_acq, [min_acq_data])
         
         self.fe_x0 = fe_x0
-
         
         self.N_iter_points = self.N_iter_points + 1
 
@@ -912,7 +891,7 @@ class Acq_Data_nD(Acq_Data):
             ax.scatter([self.t1[point, idx]], [self.t2[point, idx]], color = color, marker = 'o')
             
         
-        ax.scatter(self.min_t1[point], self.min_t2[point], color = 'orange', marker = 'D')
+        ax.scatter(self.min_acq_data[point,1], self.min_acq_data[point,2], color = 'orange', marker = 'D')
         
                     
         fig.tight_layout()
