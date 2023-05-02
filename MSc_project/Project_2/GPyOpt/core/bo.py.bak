@@ -66,7 +66,7 @@ class BO(object):
 
         if X_init.size == 1:
             self.acq_data = Acq_Data_1D(X_Init = X_init, bounds = space.get_bounds())
-        elif X_init.size == 2:
+        if X_init.size == 2:
             self.acq_data = Acq_Data_2D(X_Init = X_init, bounds = space.get_bounds())
         else:
             self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = space.get_bounds())

@@ -63,10 +63,10 @@ class BO(object):
         self.context = None
         self.num_acquisitions = 0
         #print('SPACE: ',space.get_bounds())
-
+      
         if X_init.size == 1:
             self.acq_data = Acq_Data_1D(X_Init = X_init, bounds = space.get_bounds())
-        elif X_init.size == 2:
+        if X_init.size == 2:
             self.acq_data = Acq_Data_2D(X_Init = X_init, bounds = space.get_bounds())
         else:
             self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = space.get_bounds())
@@ -196,7 +196,7 @@ class BO(object):
             self.save_evaluations(self.evaluations_file)
         if self.models_file is not None:
             self.save_models(self.models_file)
-
+            
         return self.acq_data
 
     def _print_convergence(self):
@@ -227,7 +227,7 @@ class BO(object):
         self.Y_new, cost_new = self.objective.evaluate(self.suggested_sample)
         self.cost.update_cost_model(self.suggested_sample, cost_new)
         self.Y = np.vstack((self.Y,self.Y_new))
-
+        
         self.fe_x0, d_ = self.objective.evaluate(self.X[0].reshape(1,-1))
 
     def _compute_results(self):

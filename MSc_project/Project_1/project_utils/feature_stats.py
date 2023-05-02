@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from project_utils.uncertainty_plot import Add_Uncertainty_Plot
+
+
 from copy import deepcopy
 
 from itertools import combinations
@@ -17,7 +20,14 @@ class Feature_Statistics(object):
     colour_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:yellow']
     colour_max  = len(colour_list)
                           
-    def __init__(self, feature_names=None, mode='classification', classes=None, file_handle=None):
+    def __init__(self,
+                 feature_names=None,
+                 mode='classification',
+                 classes=None, 
+                 X_train_std=1, 
+                 uncert_pr=True, 
+                 N_consistancy=0,
+                 file_handle=None):
 
         if file_handle == None:
             
@@ -29,6 +39,19 @@ class Feature_Statistics(object):
             self.Features       = np.empty([0, self.Num_Features], dtype=float)
             self.Exp_Models     = []
             self.feopt          = np.empty([0], dtype=np.uint8)
+            self.X_train_std    = X_train_std
+            self.uncert_pr      = uncert_pr
+            
+            if N_consistancy == 0:
+                self.Consistancy_Data = None
+            else:    
+                N_consistancy = int(N_consistancy / 2) * 2 + 1
+                
+                if uncert_pr:
+                    self.Consistancy_Data = np.empty([0, N_consistancy, 2], dtype=float)
+                else:
+                    self.Consistancy_Data = np.empty([0, N_consistancy], dtype=float)
+
         
             if mode == 'classification':
                 self.Mode          = 'classification'
@@ -38,10 +61,16 @@ class Feature_Statistics(object):
                 self.e_predictions = np.empty([0, self.Num_Classes], float)
                 self.Outcomes      = np.empty([0], dtype=np.uint8)
                 
-            else:
+            elif self.uncert_pr:
                 self.Mode           = 'regression'
                 self.f_predictions  = np.empty([0], dtype=float)
                 self.e_predictions  = np.empty([0, 2], dtype=float)
+                self.Outcomes       = np.empty([0], dtype=float)
+                
+            else:
+                self.Mode           = 'regression'
+                self.f_predictions  = np.empty([0], dtype=float)
+                self.e_predictions  = np.empty([0], dtype=float)
                 self.Outcomes       = np.empty([0], dtype=float)
                 
         else:
@@ -49,7 +78,7 @@ class Feature_Statistics(object):
 
 
            
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model):
+    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model, consistancy=None):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -58,7 +87,12 @@ class Feature_Statistics(object):
         
         else:
             self.f_predictions = np.append(self.f_predictions, [f_prediction])
-            self.e_predictions = np.vstack([self.e_predictions, np.asarray(e_prediction, dtype=float)])
+            
+            if self.uncert_pr:
+                self.e_predictions = np.vstack([self.e_predictions, np.asarray(e_prediction, dtype=float)])
+            else:
+                self.e_predictions = np.append(self.e_predictions, np.asarray(e_prediction, dtype=float))
+            
             self.Outcomes      = np.append(self.Outcomes, [outcome])
             
             self.Max_Outcome = np.max(self.Outcomes)
@@ -74,11 +108,15 @@ class Feature_Statistics(object):
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
         self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
-        
-        self.feopt = np.append(self.feopt, [feopt])
+
+        if feopt == None:
+            self.feopt = None
 
         self.Exp_Models.append(model)
 
+        if not isinstance(consistancy ,type(None)):
+            self.Consistancy_Data = np.vstack([self.Consistancy_Data,  consistancy.reshape(1,-1,2)])
+        
         self.Num_Samples += 1
         
         
@@ -96,7 +134,7 @@ class Feature_Statistics(object):
 
             e_prediction = np.asarray(e_prediction, dtype=float)
             #e_prediction = np.append(e_prediction, [0.0])#########################################################
-            self.e_predictions = np.vstack([self.e_predictions, e_prediction])
+            self.e_predictions = np.append([self.e_predictions, np.asarray(e_prediction, dtype=float)])
 
             
             self.Max_Outcome = np.max(self.Outcomes)
@@ -144,18 +182,20 @@ class Feature_Statistics(object):
                               f_prediction  = self.f_predictions[row],
                               e_prediction  = self.e_predictions[row],
                               feopt         = self.feopt,         
-                              model         =self.Exp_Models[row])
+                              model         = self.Exp_Models[row])
 
       
 
     def Write_To_File(self, file_handle):
 
-        pickle.dump(self.Feature_Names,  file_handle)
-        pickle.dump(self.Num_Features,   file_handle)  
-        pickle.dump(self.Num_Samples,    file_handle)  
-        pickle.dump(self.Feature_Scores, file_handle)
-        pickle.dump(self.Scaled_Scores,  file_handle)
-        pickle.dump(self.Mode,           file_handle)
+        pickle.dump(self.Feature_Names,    file_handle)
+        pickle.dump(self.Num_Features,     file_handle)  
+        pickle.dump(self.Num_Samples,      file_handle)  
+        pickle.dump(self.Feature_Scores,   file_handle)
+        pickle.dump(self.Scaled_Scores,    file_handle)
+        pickle.dump(self.Mode,             file_handle)
+        pickle.dump(self.uncert_pr,        file_handle)
+        pickle.dump(self.Consistancy_Data, file_handle)
 
         if self.Mode == 'classification':
             pickle.dump(self.f_predictions, file_handle)
@@ -174,12 +214,14 @@ class Feature_Statistics(object):
 
     def Read_From_File(self, file_handle):
               
-        self.Feature_Names  = pickle.load(file_handle)  
-        self.Num_Features   = pickle.load(file_handle)  
-        self.Num_Samples    = pickle.load(file_handle)  
-        self.Feature_Scores = pickle.load(file_handle)
-        self.Scaled_Scores  = pickle.load(file_handle)
-        self.Mode           = pickle.load(file_handle)
+        self.Feature_Names    = pickle.load(file_handle)  
+        self.Num_Features     = pickle.load(file_handle)  
+        self.Num_Samples      = pickle.load(file_handle)  
+        self.Feature_Scores   = pickle.load(file_handle)
+        self.Scaled_Scores    = pickle.load(file_handle)
+        self.Mode             = pickle.load(file_handle)
+        self.uncert_pr        = pickle.load(file_handle)
+        self.Consistancy_Data = pickle.load(file_handle)
 
         if self.Mode == 'classification':
             self.f_predictions = pickle.load(file_handle)
@@ -317,7 +359,7 @@ class Feature_Statistics(object):
             
         
             
-    def Box_Plot(self, top_features=True, showfliers=True):
+    def Box_Plot(self, top_features=True, showfliers=False):
 
         fig, ax = plt.subplots()
         
@@ -492,9 +534,15 @@ class Feature_Statistics(object):
         
         fig, ax = plt.subplots()
             
-        plt.scatter(x = self.Outcomes, y = self.feopt,              label = 'feopt',  marker='o')
+        if self.feopt != None:
+            plt.scatter(x = self.Outcomes, y = self.feopt, label = 'feopt',  marker='o')
+            
         plt.scatter(x = self.Outcomes, y = self.f_predictions,      label = 'BB',  marker='x')
-        plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='+')
+        
+        if self.uncert_pr:
+            plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='+')
+        else:
+            plt.scatter(x = self.Outcomes, y = self.e_predictions,      label = 'Exp', marker='+')
                
         ax.set_xlabel('Y Test')
         ax.set_ylabel('Model Prediction')
@@ -538,8 +586,10 @@ class Feature_Statistics(object):
             
     def Reg_Fidelity(self):
         
-        exp_predictions = self.e_predictions[:,0]
-        exp_variance    = self.e_predictions[:,1]
+        if self.uncert_pr:
+            exp_predictions = self.e_predictions[:,0]
+        else:
+            exp_predictions = self.e_predictions
             
         y_f_differences = np.abs(self.Outcomes - self.f_predictions )
             
@@ -557,8 +607,11 @@ class Feature_Statistics(object):
 
         print('BB(x) - exp(x):     ', np.mean(f_e_differences), ' : ', np.var(f_e_differences),
               ' : ', np.max(f_e_differences))
-
-        print('Average exp(x) var: ', np.mean(exp_variance))
+        
+        if self.uncert_pr:
+            print('Average exp(x) var: ', np.mean(self.e_predictions[:,1]))
+            
+        self.fidelity = np.mean(y_e_differences) / np.mean(np.abs(self.Outcomes))
                 
 
     def Jaccard_Values(self, top_k=5):
@@ -583,60 +636,16 @@ class Feature_Statistics(object):
             jaccard_distance = 1 - jaccard_similarity
             jaccard_distances.append(jaccard_distance)
 
+
+        self.jaccard_similarities = np.mean(jaccard_similarities)
         
-        print('Mean Jaccard Similarity: ', np.mean(jaccard_similarities))
+        print('Mean Jaccard Similarity: ', self.jaccard_similarities)
         print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
 
         
-    def Consistancy(self, X_train, sample_select='Latest'):
         
-        std_range   = 2
-        mid_index   = 2 * std_range
-        index_range = 4 * std_range + 1
-        
-        self.std = np.std(X_train, axis = 0)
-        
-        if sample_select == 'Latest':
-            sample = self.Num_Samples - 1
-        
-        #elif sample_select == 'All':
-        #    sample = 'All'
-            
-        else:
-            sample = sample_select
-
-        x_perturbed = np.empty([self.Num_Features, 2])
-        p_means     = np.empty([index_range])
-        p_std       = np.empty([index_range])
-        
-        p_means[mid_index], p_std[mid_index] = self.Exp_Models[sample].predict(X = self.Features[sample].reshape(1, -1), return_std = True)
-        p,s                                  = self.Exp_Models[sample].predict(X = self.Features[sample].reshape(1, -1), return_std = True)
-        print(p,s,mid_index)
-            
-        for std_x2 in range(1, mid_index + 1):
-            
-            x_perturbed_neg = self.Features[sample] - (std_x2 * self.std / 2)
-            x_perturbed_pos = self.Features[sample] + (std_x2 * self.std / 2)
-            
-            #p_means[mid_index - std_x2], p_std[mid_index - std_x2] = self.Exp_Models[sample].predict(X = x_perturbed_neg.reshape(1, -1), return_std = True)
-            #p_means[mid_index + std_x2], p_std[mid_index + std_x2] = self.Exp_Models[sample].predict(X = x_perturbed_pos.reshape(1, -1), return_std = True)
-
-            p, s = self.Exp_Models[sample].predict(X = x_perturbed_neg.reshape(1, -1), return_std = True)
-            print(p,s,mid_index - std_x2)
-            p_means[mid_index - std_x2] = p
-            p_std[mid_index - std_x2] = s
-            p, s = self.Exp_Models[sample].predict(X = x_perturbed_pos.reshape(1, -1), return_std = True)
-            print(p,s, mid_index + std_x2)
-            p_means[mid_index + std_x2] = p
-            p_std[mid_index + std_x2] = s
-
-        print('SD \t Y pred\t Y var') 
-        for index in range(index_range):
-            print('%.1f:\t %.3f\t %.3f' % ((index-mid_index)/2, p_means[index], p_std[index]))
-
-                
     def Group_String(self):
-        return 'All Samples'
+        return 'All Features'
 
     def Print_Data(self):
         print(self.Feature_Scores)
@@ -669,9 +678,119 @@ class Feature_Statistics(object):
             return_ranges[index] = low_val + (index * increment)
 
         return return_ranges
+    
+    def add_Feature_Coeffs(self, Feature_Coeffs):
+        
+        self.Feature_Coeffs = Feature_Coeffs
+        
+        if self.Num_Samples > 0:        
+            self.calculate_Feature_Coeffs()
+            
+    
+    
+    def calculate_Feature_Coeffs(self):
+        
+        mean_scores = np.mean(self.Feature_Scores, axis = 0)
+        
+        self.coeffs_ratio = self.Feature_Coeffs / mean_scores
+        
+        print('Mean Scores: ', mean_scores)
+        print('Mean Coeffs: ', self.Feature_Coeffs)
+        
+    
+    
+    def delete_one(self):
 
-#############################################################################################
-# Abstract class for containg groups of stats
+        mean_scores = np.mean(self.Feature_Scores, axis = 0)
+                              
+        variance = np.zeros(self.Num_Features)
+        
+        for sample in range (self.Num_Samples):
+            
+            y = self.Exp_Models[sample].predict(self.Features[sample].reshape(1,-1))
+        
+            for feature in range(self.Num_Features):
+            
+                X_p = deepcopy(self.Features[sample])
+
+                X_p[feature] = 0
+            
+                X_p = X_p.reshape([1,self.Num_Features])
+                       
+                y_p = self.Exp_Models[sample].predict(X_p)
+           
+                variance[feature] = variance[feature] + np.square(y - y_p)
+            
+        
+        self.delete_one_var = variance / self.Num_Samples
+        
+        return self.delete_one_var
+    
+            
+    def Compare_Models (self, model_b):
+        
+        model_diff = self.Feature_Scores - model_b.Feature_Scores
+       
+        self.model_diff_mean = np.mean(model_diff, axis = 0) / np.mean(model_diff)
+        self.model_diff_std  = np.std(model_diff, axis = 0)  / np.mean(model_diff)
+        
+        print('Score Diff Mean: ', self.model_diff_mean)
+        print('Score Diff SD:   ', self.model_diff_std)
+
+
+    def Consistancy(self, std_bound, plot=True, title=''):       
+
+        N_Points = np.size(self.Consistancy_Data, axis=1)
+        print('N_Points: ',N_Points)
+      
+        mid_index = int(N_Points / 2)
+        
+        y_pert_all   = np.zeros(N_Points)
+        y_uncert_all = np.zeros(N_Points)
+        
+        for sample in range(self.Num_Samples):
+            
+            if self.uncert_pr:
+                y_mid    = self.Consistancy_Data[sample, mid_index, 0]           
+                y_pert   = self.Consistancy_Data[sample, :, 0]
+                y_uncert = self.Consistancy_Data[sample, :, 1]
+                
+                y_uncert_all = y_uncert_all + y_uncert / y_mid
+            
+            else:    
+                y_mid  = self.Consistancy_Data[sample, mid_index]
+                y_pert = self.Consistancy_Data[sample, :]
+           
+            y_pert_all = y_pert_all + ((y_pert - y_mid) / y_mid)
+            
+        y_pert_mean   = y_pert_all   / self.Num_Samples
+        
+        y_uncert_mean = y_uncert_all / self.Num_Samples
+        
+        if plot:
+  
+            fig, ax = plt.subplots()
+
+            title = title + ' Consistancey_Plot'
+       
+            x = (np.arange(N_Points) - mid_index) / mid_index * std_bound
+            #print('X: ', x, y_pert_mean)
+            
+            if self.uncert_pr:
+                Add_Uncertainty_Plot(ax, x, y_pert_mean, y_uncert_mean)
+            else:
+                ax.plot(x, y_pert_mean)
+        
+            ax.set_xlabel('SD Perturbation')
+            ax.set_ylabel('Normalised Prediction Change')
+            ax.set_title(title)
+
+            fig.tight_layout()
+            plt.show()
+            
+            
+####################################################################################################
+    # Abstract class for containg groups of stats
 
 class Group_Container(object):        
         

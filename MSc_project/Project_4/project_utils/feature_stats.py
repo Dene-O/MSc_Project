@@ -3,11 +3,13 @@ import matplotlib.pyplot as plt
 
 from project_utils.uncertainty_plot import Add_Uncertainty_Plot
 
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
 
 from copy import deepcopy
 
 from itertools import combinations
-
 
 import pickle
 
@@ -736,6 +738,40 @@ class Feature_Statistics(object):
         
         print('Score Diff Mean: ', self.model_diff_mean)
         print('Score Diff SD:   ', self.model_diff_std)
+
+
+    def Regression_Calibration (self, plot=True, title=''):
+
+        # The Z scores in CRUDE are the difference in actual y and model prediction divided by the
+        # uncertainty. In our case this is the difference in BB and explainer model, divided by the
+        # uncertainty in the explainer model
+        #
+        Z_scores = (self.f_predictions - self.e_predictions[:,0]) / self.e_predictions[:,1]
+        
+        Z_scores = Z_scores.sort()
+        Z_scores = Z_scores.reshape([-1,1])
+        
+        x_calib = (np.arange(self.Num_samples) + 1) / self.Num_samples
+        x_calib = x_calib.reshape([-1,1])
+        
+        # Linear regress required for normalisation
+        LR = LinearRegression(fit_intercept=False)
+        LR.fit(x_calib, Z_scores)
+        
+        max_y = LR.predict(x_calib[-1,:])
+        Z_scores = Z_scores / max_y
+
+        self.calibration_MSE = 1 - mean_squared_error(x_calib, Z_scores)
+        self.calibration_MAE = 1 - mean_absolute_error(x_calib, Z_scores)
+
+        print('Calibration', self.calibration_MSE)
+        
+        if plot:
+            
+            fig, ax = plt.subplots()
+            ax.scatter(x_calib, Z_scores)
+            ax.plot([0,1],[0,1])
+            plt.show()
 
 
     def Consistancy(self, std_bound, plot=True, title=''):       

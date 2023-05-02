@@ -160,13 +160,13 @@ class BB_Model(object):
             
             self.feature_names = []
 
-            Feature_Means = np.random.uniform(low=0.0,  high=10.0, size=n_features)
-            Feature_SDs   = np.random.uniform(low=0.25, high=5.0,  size=n_features)
+            Feature_Means = np.random.uniform(low=5.0, high=20.0, size=n_features)
+            Feature_SDs   = np.random.uniform(low=1.0, high=5.0,  size=n_features)
 
             self.X = np.empty([N_samples, n_features])
 
             # Features 0, 1: Passive uniform distribution
-            for feature in range(n_passive):
+            for feature in range(2):
                 
                 self.feature_names.append('Passive_' + str(feature))
                 
@@ -175,43 +175,43 @@ class BB_Model(object):
                 
                 self.X[:,feature] = np.random.uniform(low=lower_range, high=upper_range, size=N_samples)
                 
-            # Features 2, 3: Active uniform distribution
-            for feature in range(n_passive, n_passive + 2):  
+            # Features 2, 3, 4: Active uniform distribution
+            for feature in range(2, 5):  
                 
                 self.feature_names.append('Active_' + str(feature))
 
                 lower_range = Feature_Means[feature] - 2 * Feature_SDs[feature]
                 upper_range = Feature_Means[feature] + 2 * Feature_SDs[feature]
                 
+                if lower_range < 0: lower_range = 0
+                
                 self.X[:,feature] = np.random.uniform(low=lower_range, high=upper_range, size=N_samples)
                 
-            # Features 4, 5: Active n dormalistribution
-            for feature in range(n_passive + 2, n_passive + 4): 
+            # Features 5, 6, 7: Active n dormalistribution
+            sign = 1
+            for feature in range(5, 8): 
                 
                 self.feature_names.append('Active_' + str(feature))
                
-                self.X[:,feature] = np.random.normal(Feature_Means[feature], Feature_SDs[feature], size=N_samples)
+                while (Feature_Means[feature] / 2) < Feature_SDs[feature]:
+                    Feature_SDs[feature] = Feature_SDs[feature] / 2
 
+                self.X[:,feature] =  sign * np.random.normal(Feature_Means[feature], Feature_SDs[feature], size=N_samples)
                 
-            self.feature_names.append('Active_6')
-            self.feature_names.append('Active_7')
+                sign = -sign
                     
-            # Features 6, 7: Active and correlated with other active features
-            for sample in range(N_samples):
 
-                self.X[sample,6] = np.random.normal(self.X[sample,2]+self.X[sample,4], Feature_SDs[6])
-                self.X[sample,7] = np.random.normal(self.X[sample,3]+self.X[sample,5], Feature_SDs[7])
                            
-            Feature_Coeffs = np.zeros([N_samples, n_features])
+            self.Feature_Coeffs = np.zeros([N_samples, n_features])
             
-            Feature_Coeffs[:,2] = np.random.normal(5,  2,    size=N_samples)
-            Feature_Coeffs[:,3] = np.random.normal(-8, 1,    size=N_samples)
-            Feature_Coeffs[:,4] = np.random.normal(-4, 2,    size=N_samples)
-            Feature_Coeffs[:,5] = np.random.normal(10, 2,    size=N_samples)
-            Feature_Coeffs[:,6] = np.random.normal(6,  3,    size=N_samples)
-            Feature_Coeffs[:,7] = np.random.normal(-2, 0.25, size=N_samples)
+            self.Feature_Coeffs[:,2] = np.random.normal(5,  2,    size=N_samples)
+            self.Feature_Coeffs[:,3] = np.random.normal(-8, 1,    size=N_samples)
+            self.Feature_Coeffs[:,4] = np.random.normal(-4, 2,    size=N_samples)
+            self.Feature_Coeffs[:,5] = np.random.normal(10, 2,    size=N_samples)
+            self.Feature_Coeffs[:,6] = np.random.normal(6,  3,    size=N_samples)
+            self.Feature_Coeffs[:,7] = np.random.normal(-2, 0.25, size=N_samples)
             
-            self.y = np.sum(self.X * Feature_Coeffs, axis = 1)
+            self.y = np.sum(self.X * self.Feature_Coeffs, axis = 1)
             
                  
             
@@ -227,7 +227,7 @@ class BB_Model(object):
 #            X = np.arange(0.28, 0.52, 0.001)
             self.y = BB_Model.Forrester(X)
 
-            print(X.shape)
+            #print(X.shape)
             self.feature_names = ['X']
             self.outcome = 'Forrester'
 
@@ -240,7 +240,7 @@ class BB_Model(object):
             
             self.X[:,0] = X
             
-            print(self.X.shape)
+            #print(self.X.shape)
 
             
         ################################################################################################################
@@ -271,8 +271,8 @@ class BB_Model(object):
                     idx += 1
             
 
-            print('X shape',self.X.shape)
-            print('y shape',self.y.shape)
+            #print('X shape',self.X.shape)
+            #print('y shape',self.y.shape)
 
             self.feature_names = ['X1', 'X2']
             self.outcome = 'Forrester 2D'
@@ -378,6 +378,8 @@ class BB_Model(object):
            
         self.X_train, self.X_test, self.y_train, self.y_test = \
           train_test_split(self.X, self.y, train_size=train_size, random_state=self.random_state)
+        
+        self.X_train_std = np.std(self.X_train, axis = 0)
         
 
     ####################################################################################################################
@@ -531,7 +533,13 @@ class BB_Model(object):
     def get_2d_data(self):
         return self.X, self.X1, self.X2
     
+    ####################################################################################################################
+    def get_Feature_Coeffs(self):
+        return np.mean(self.Feature_Coeffs, axis = 0)
     
+    ####################################################################################################################
+    def get_X_train_std(self):
+        return self.X_train_std
     
     
     

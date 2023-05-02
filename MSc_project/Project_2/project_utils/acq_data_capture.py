@@ -32,6 +32,7 @@ class Acq_Data_1D(Acq_Data):
         print('Acq_Data_1D')
         
        
+        self.num_acq_points   = 100
         self.normalised_range = 1.5
         
         self.X_Init     = X_Init
@@ -95,6 +96,9 @@ class Acq_Data_1D(Acq_Data):
         self.N_iter_points = self.N_iter_points + 1
 
         
+    def Add_BB_model(self, BB_Model):
+        self.BB_Model = BB_Model
+
     def Create_BB_plot(self):
         
         self.BB_predictions = np.empty([self.num_acq_points])
@@ -220,8 +224,8 @@ class Acq_Data_1D_For(Acq_Data):
             if t1_t2:
                 acq_values[i], t1[i], t2[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1), return_terms=True)
                 if abs(np.mean(X) - np.mean(self.X_range[i])) < 0.015:
-                    print('XX: ', X, self.X_range[i])
-                    print('MIN:', acq_values[i], t1[i], t2[i])
+                    #print('XX: ', X, self.X_range[i])
+                    #print('MIN:', acq_values[i], t1[i], t2[i])
                     min_acqxx, min_t1xx, min_t2xx = acq_function._compute_acq(self.X_range[i].reshape(1,-1), return_terms=True)
             else:
                 acq_values[i] = acq_function._compute_acq(self.X_range[i].reshape(1,-1))
@@ -233,11 +237,11 @@ class Acq_Data_1D_For(Acq_Data):
         self.t2         = np.vstack([self.t2,         t2])
         
         min_acq_data = acq_function._compute_acq(X, return_terms=True)
-        print('MINXX:', min_acq_data)
         
         min_acq_data = np.array(min_acq_data).reshape(1,3)
+        
         self.min_acq_data = np.vstack([self.min_acq_data, min_acq_data])
-        print('SHAPE: ',self.min_acq_data.shape)
+ 
         
         self.fe_x0 = fe_x0
       
@@ -318,6 +322,11 @@ class Acq_Data_1D_For(Acq_Data):
                         
     def get_fe_x0(self):
         return self.fe_x0
+
+    def Add_BB_model(self, BB_Model):
+        self.BB_Model = BB_Model
+
+
 
     def plot_t1_t2(self, point):
         
@@ -439,6 +448,9 @@ class Acq_Data_2D(Acq_Data):
 
         
             
+    def Add_BB_model(self, BB_Model):
+        self.BB_Model = BB_Model
+
     def Create_BB_plot(self):
         
         self.BB_predictions = np.empty([self.N_x1, self.N_x2])
@@ -533,9 +545,6 @@ class Acq_Data_2D(Acq_Data):
                         
     def get_fe_x0(self):
         return self.fe_x0
-
-    def Add_BB_model(self, BB_model):
-        self.BB_model = BB_model
 
 ###############################################################################################################################        
     
@@ -634,7 +643,7 @@ class Acq_Data_2D_For(Acq_Data):
                     axs[idx1,idx2].set_ylim(0, 1)
 
         
-            self.BB_model.Forrester_plot_2D(axs[0,0], 8, 8)
+            self.BB_Model.Forrester_plot_2D(axs[0,0], 8, 8)
         
             axs[0,0].set_xticks(ticks=[])
             
@@ -678,7 +687,7 @@ class Acq_Data_2D_For(Acq_Data):
         ax2.set_xlim(0, 1)
         ax2.set_ylim(0, 1)
        
-        self.BB_model.Two_D_plot(ax2, 8, 8)
+        self.BB_Model.Two_D_plot(ax2, 8, 8)
 
         for point in range(self.N_iter_points):
             
@@ -696,8 +705,8 @@ class Acq_Data_2D_For(Acq_Data):
     def get_fe_x0(self):
         return self.fe_x0
 
-    def Add_BB_model(self, BB_model):
-        self.BB_model = BB_model
+    def Add_BB_model(self, BB_Model):
+        self.BB_Model = BB_Model
 
 ###############################################################################################################################
 
