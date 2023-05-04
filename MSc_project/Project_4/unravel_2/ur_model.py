@@ -348,10 +348,16 @@ class UR_Model(object):
             variance[feature] = np.square(y - y_p)
             
         
+        self.del_1_variance = variance
+        
         self.del_1_scores = variance / np.mean(variance)
         
         return self.del_1_scores
             
+
+    def get_del_1_variance(self):
+        return self.del_1_variance
+        
             
             
     def del_2_rel(self):

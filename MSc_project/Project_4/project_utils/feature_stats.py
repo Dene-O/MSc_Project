@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 from project_utils.uncertainty_plot import Add_Uncertainty_Plot
 
 from sklearn.linear_model import LinearRegression
+
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import r2_score
 
 from copy import deepcopy
 
@@ -39,7 +41,7 @@ class Feature_Statistics(object):
             self.Feature_Scores = np.empty([0, self.Num_Features], dtype=float)
             self.Scaled_Scores  = np.empty([0, self.Num_Features], dtype=float)
             self.Features       = np.empty([0, self.Num_Features], dtype=float)
-            self.Exp_Models     = []
+            self.del_1_var      = np.empty([0, self.Num_Features], dtype=float)
             self.feopt          = np.empty([0], dtype=np.uint8)
             self.X_train_std    = X_train_std
             self.uncert_pr      = uncert_pr
@@ -80,7 +82,15 @@ class Feature_Statistics(object):
 
 
            
-    def Add_Sample(self, sample_scores, X_row, outcome, f_prediction, e_prediction, feopt, model, consistancy=None):
+    def Add_Sample(self,
+                   sample_scores,
+                   X_row,
+                   outcome,
+                   f_prediction,
+                   e_prediction,
+                   feopt=None,
+                   consistancy=None,
+                   del_1_var=None):
        
         if self.Mode == 'classification':
             self.f_predictions = np.vstack([self.f_predictions, np.asarray(f_prediction, dtype=float)])
@@ -114,10 +124,11 @@ class Feature_Statistics(object):
         if feopt == None:
             self.feopt = None
 
-        self.Exp_Models.append(model)
-
         if not isinstance(consistancy ,type(None)):
             self.Consistancy_Data = np.vstack([self.Consistancy_Data,  consistancy.reshape(1,-1,2)])
+        
+        if not isinstance(del_1_var ,type(None)):
+            self.del_1_var = np.vstack([self.del_1_var,  del_1_var])
         
         self.Num_Samples += 1
         
@@ -161,8 +172,6 @@ class Feature_Statistics(object):
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
         self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
 
-        self.Exp_Models.append(model)
-
         self.Num_Samples += 1
         
 
@@ -183,8 +192,7 @@ class Feature_Statistics(object):
                               outcome       = self.Outcomes[row],
                               f_prediction  = self.f_predictions[row],
                               e_prediction  = self.e_predictions[row],
-                              feopt         = self.feopt,         
-                              model         = self.Exp_Models[row])
+                              feopt         = self.feopt)
 
       
 
@@ -283,9 +291,7 @@ class Feature_Statistics(object):
             
             for index in range(max_features):            
                 self.Top_Features.append(self.Feature_Names[top_indices[index]])
-
-            
-              
+          
     
     
     def Frequency_Plot(self, top_features=True, display_feature_list=False):
@@ -509,6 +515,375 @@ class Feature_Statistics(object):
         fig.tight_layout()
         plt.show()
 
+                
+
+    def Jaccard_Values(self, top_k=5):
+
+        jaccard_similarities = []
+        jaccard_distances    = []
+        
+        evaluation_pairs = list(combinations(range(self.Num_Samples), 2))
+                                
+        for evaluation_pair in evaluation_pairs:
+                                
+            fs1 = self.Feature_Scores[evaluation_pair[0]]
+            fs2 = self.Feature_Scores[evaluation_pair[1]]
+
+            # Extracting indices of top-k features in both lists
+            fs1 = set(np.argpartition(fs1, -top_k)[-top_k:])
+            fs2 = set(np.argpartition(fs2, -top_k)[-top_k:])
+
+            jaccard_similarity = len(fs1.intersection(fs2)) / len(fs1.union(fs2))
+            jaccard_similarities.append(jaccard_similarity)                                
+                                
+            jaccard_distance = 1 - jaccard_similarity
+            jaccard_distances.append(jaccard_distance)
+
+
+        self.jaccard_similarities = np.mean(jaccard_similarities)
+        
+        print('Mean Jaccard Similarity: ', self.jaccard_similarities)
+        print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
+
+    
+    def add_Feature_Coeffs(self, Feature_Coeffs):
+        
+        self.Feature_Coeffs = Feature_Coeffs
+        
+        if self.Num_Samples > 0:        
+            self.calculate_Feature_Coeffs()
+            
+    
+    # Only for sysnthetic data where coefficients are known.    
+    def calculate_Feature_Coeffs(self):
+
+        mean_score       = np.mean(self.Feature_Scores)        
+        norm_mean_scores = np.mean(self.Feature_Scores, axis = 0) / mean_score
+
+        norm_coeff       = self.Feature_Coeffs / np.mean(self.Feature_Coeffs)       
+        
+        self.coeffs_ratio = norm_coeff / norm_mean_scores
+        
+        print('Mean Coeffs Ratio: ', self.coeffs_ratio)
+        
+        self.coeff_error = mean_absolute_error(y_true = np.ones(self.Num_Features), y_pred = self.coeffs_ratio)
+        
+        print('Mean Coeffs Error: ', self.coeff_error)
+        
+        
+    def Group_String(self):
+        return 'All Features'
+
+    def Print_Data(self):
+        print(self.Feature_Scores)
+        
+    def Print_Scaled(self):
+        print(self.Scaled_Scores)
+
+    def Number_Of_Samples(self):
+        return self.Num_Samples
+    
+    def Get_Features(self):
+        return self.Feature_Names
+    
+    def Get_Classes(self):
+        return self.Classes
+    
+    def Data_Range(self):
+        return self.Min_Outcome, self.Max_Outcome
+   
+            
+    def Compare_Models (self, model_b):
+        
+        model_diff = self.Feature_Scores - model_b.Feature_Scores
+       
+        self.model_diff_mean = np.mean(model_diff, axis = 0) / np.mean(model_diff)
+        self.model_diff_std  = np.std(model_diff, axis = 0)  / np.mean(model_diff)
+        
+        print('Score Diff Mean: ', self.model_diff_mean)
+        print('Score Diff SD:   ', self.model_diff_std)
+
+
+             
+            
+####################################################################################################
+
+
+class Feature_Statistics_R(Feature_Statistics):
+
+           
+    def Reg_Fidelity_Graph(self, Title=''):
+        
+        fig, ax = plt.subplots()
+            
+        if self.feopt != None:
+            plt.scatter(x = self.Outcomes, y = self.feopt, label = 'feopt',  marker='o')
+            
+        plt.scatter(x = self.Outcomes, y = self.f_predictions,      label = 'BB',  marker='x')
+        
+        if self.uncert_pr:
+            plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='+')
+        else:
+            plt.scatter(x = self.Outcomes, y = self.e_predictions,      label = 'Exp', marker='+')
+               
+        ax.set_xlabel('Y Test')
+        ax.set_ylabel('Model Prediction')
+       
+        ax.set_title(Title + ' Fidelity')
+        
+        ax.legend()
+        plt.show()
+              
+ 
+            
+    def Fidelity(self, plot = True, Title=''):
+        
+        if self.uncert_pr:
+            exp_predictions = self.e_predictions[:,0]
+        else:
+            exp_predictions = self.e_predictions
+            
+        y_f_differences = np.abs(self.Outcomes - self.f_predictions )
+            
+        y_e_differences = np.abs(self.Outcomes - exp_predictions)
+            
+        f_e_differences = np.abs(self.f_predictions - exp_predictions)
+
+        print('Average, SD, and Max Differences:')
+            
+        print('y - BB(x):          ', np.mean(y_f_differences), ' : ', np.std(y_f_differences),
+              ' : ', np.max(y_f_differences))
+
+        print('y - exp(x):         ', np.mean(y_e_differences), ' : ', np.std(y_e_differences),
+              ' : ', np.max(y_e_differences))
+
+        print('BB(x) - exp(x):     ', np.mean(f_e_differences), ' : ', np.std(f_e_differences),
+              ' : ', np.max(f_e_differences))
+        
+        if self.uncert_pr:
+            print('Average exp(x) Uncertainty: ', np.mean(self.e_predictions[:,1]))
+        
+        self.r2_score = r2_score(y_true = self.f_predictions, y_pred = exp_predictions)   
+        self.fidelity = np.mean(y_e_differences) / np.mean(np.abs(self.Outcomes))
+        
+        print('R Score:  ', self.r2_score)
+        print('Fidelity: ', self.fidelity)
+        
+        if plot:
+            self.Reg_Fidelity_Graph(Title)    
+
+    def Jaccard_Values(self, top_k=5):
+
+        jaccard_similarities = []
+        jaccard_distances    = []
+        
+        evaluation_pairs = list(combinations(range(self.Num_Samples), 2))
+                                
+        for evaluation_pair in evaluation_pairs:
+                                
+            fs1 = self.Feature_Scores[evaluation_pair[0]]
+            fs2 = self.Feature_Scores[evaluation_pair[1]]
+
+            # Extracting indices of top-k features in both lists
+            fs1 = set(np.argpartition(fs1, -top_k)[-top_k:])
+            fs2 = set(np.argpartition(fs2, -top_k)[-top_k:])
+
+            jaccard_similarity = len(fs1.intersection(fs2)) / len(fs1.union(fs2))
+            jaccard_similarities.append(jaccard_similarity)                                
+                                
+            jaccard_distance = 1 - jaccard_similarity
+            jaccard_distances.append(jaccard_distance)
+
+
+        self.jaccard_similarities = np.mean(jaccard_similarities)
+        
+        print('Mean Jaccard Similarity: ', self.jaccard_similarities)
+        print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
+
+       
+        
+ 
+    
+    def Data_Range(self):
+        return self.Min_Outcome, self.Max_Outcome
+        
+    def Get_Ranges(self, num_ranges):
+        
+        outcome_range = self.Max_Outcome - self.Min_Outcome
+        
+        low_val   = self.Min_Outcome - (0.005 * outcome_range)
+        increment = outcome_range * 1.01 / num_ranges
+                
+        return_ranges = np.empty([num_ranges + 1], dtype=float)
+
+        for index in range(num_ranges + 1):
+            return_ranges[index] = low_val + (index * increment)
+
+        return return_ranges
+     
+    
+    
+    def delete_one(self):
+        
+        self.mean_variance = np.mean(self.del_1_var, axis = 0)
+        print('mean_variance',self.mean_variance)
+        
+        mean_scores = np.mean(self.del_1_var, axis = 0)
+        print('Mean scores:',self.mean_variance)
+        
+        sort_order = np.argsort(mean_scores)
+        print('sort_order',sort_order)
+        
+        sorted_scores   = mean_scores[sort_order] / np.mean(mean_scores)
+        
+        sorted_variance = self.mean_variance[sort_order] / np.mean(self.mean_variance)
+        
+        self.deletion1_incoherence = mean_absolute_error(y_true=sorted_scores, y_pred=sorted_variance)
+        
+        
+        print('Prediction Variance Feature Deletion:', self.mean_variance)
+        
+        print('Delete One Incoherence:', self.deletion1_incoherence)
+        
+        
+        
+    
+            
+    def Compare_Models (self, model_b):
+        
+        model_diff = self.Feature_Scores - model_b.Feature_Scores
+       
+        self.model_diff_mean = np.mean(model_diff, axis = 0) / np.mean(model_diff)
+        self.model_diff_std  = np.std(model_diff, axis = 0)  / np.mean(model_diff)
+        
+        print('Score Diff Mean: ', self.model_diff_mean)
+        print('Score Diff SD:   ', self.model_diff_std)
+
+
+    def Regression_Calibration (self, plot=True, title=''):
+
+        # The Z scores in CRUDE are the difference in actual y and model prediction divided by the
+        # uncertainty. In our case this is the difference in BB and explainer model, divided by the
+        # uncertainty in the explainer model
+        #
+        Z_scores = abs((self.f_predictions - self.e_predictions[:,0]) / self.e_predictions[:,1])
+        #print('Z: ',self.f_predictions, self.e_predictions)
+        #print('Z_scores1',Z_scores)
+        
+        Z_scores = np.sort(Z_scores)
+        #print('Z_scores2',Z_scores)
+        Z_scores = Z_scores.reshape([-1,1])
+        #print('Z_scores3',Z_scores)
+        
+        x_calib = (np.arange(self.Num_Samples) + 1) / self.Num_Samples
+        x_calib = x_calib.reshape([-1,1])
+        
+        # Linear regress required for normalisation
+        LR = LinearRegression(fit_intercept=False)
+        LR.fit(x_calib, Z_scores)
+        
+        max_y = LR.predict(x_calib[-1,:].reshape(1,-1))
+        Z_scores = Z_scores / max_y
+        #print('Z_scores4',Z_scores)
+
+        self.calibration_MSE = 1 - mean_squared_error(x_calib, Z_scores)
+        self.calibration_MAE = 1 - mean_absolute_error(x_calib, Z_scores)
+
+        print('Calibration MSE/MAE', self.calibration_MSE, self.calibration_MAE)
+        
+        if plot:
+            
+            fig, ax = plt.subplots()
+            ax.scatter(x_calib, Z_scores, color = 'green', marker = '.')
+            ax.plot([0,1],[0,1], color = 'red')
+            plt.show()
+
+
+    def Consistancy(self, std_bound, plot=True, title=''):     
+
+        self.Consistancy_std_bound = std_bound
+
+        N_Points = np.size(self.Consistancy_Data, axis=1)
+        print('N_Points: ',N_Points)
+      
+        mid_index = int(N_Points / 2)
+        
+        y_pert_all   = np.zeros(N_Points)
+        y_uncert_all = np.zeros(N_Points)
+        
+        for sample in range(self.Num_Samples):
+            
+            if self.uncert_pr:
+                y_mid    = self.Consistancy_Data[sample, mid_index, 0]           
+                y_pert   = self.Consistancy_Data[sample, :, 0]
+                y_uncert = self.Consistancy_Data[sample, :, 1]
+                
+                y_uncert_all = y_uncert_all + y_uncert / y_mid
+            
+            else:    
+                y_mid  = self.Consistancy_Data[sample, mid_index]
+                y_pert = self.Consistancy_Data[sample, :]
+           
+            y_pert_all = y_pert_all + ((y_pert - y_mid) / y_mid)
+            
+        y_pert_mean   = y_pert_all   / self.Num_Samples
+        
+        y_uncert_mean = y_uncert_all / self.Num_Samples
+        
+        self.Y_Consistancy_Pert = (y_pert_mean[0] + y_pert_mean[-1]) / 2
+        
+        if plot:
+  
+            fig, ax = plt.subplots()
+
+            title = title + ' Consistancey_Plot'
+       
+            x = (np.arange(N_Points) - mid_index) / mid_index * std_bound
+            #print('X: ', x, y_pert_mean)
+            
+            if self.uncert_pr:
+                Add_Uncertainty_Plot(ax, x, y_pert_mean, y_uncert_mean)
+            else:
+                ax.plot(x, y_pert_mean)
+        
+            ax.set_xlabel('SD Perturbation')
+            ax.set_ylabel('Normalised Prediction Change')
+            ax.set_title(title)
+
+            fig.tight_layout()
+            plt.show()
+            
+            
+    def Results_Summary(self, Title):
+     
+        print('Results_Summary: ' + Title)
+        
+        print('R Score:  ', self.r2_score)
+        print('Fidelity: ', self.fidelity)
+        
+        print('Consistancey Std/Y Pert: ', self.Consistancy_std_bound, ':', self.Y_Consistancy_Pert)
+        print('Delete One Incoherence:  ', self.deletion1_incoherence)
+ 
+        print('Mean Jaccard Similarity: ', self.jaccard_similarities)
+        print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
+ 
+        print('Calibration MSE/MAE: ' , self.calibration_MSE, ':',  self.calibration_MAE)
+        
+        print('Score Diff Mean: ', self.model_diff_mean)
+        print('Score Diff SD:   ', self.model_diff_std)
+
+        if hasattr(self, 'coeff_error'):
+            print('Mean Coeffs Error: ', self.coeff_error)
+
+           
+####################################################################################################
+
+class Feature_Statistics_C(Feature_Statistics):
+
+
+        
+
+
     def Class_Fidelity_Graph(self):
                
         f_predictions = self.f_predictions[:,1]
@@ -531,38 +906,6 @@ class Feature_Statistics(object):
         ax.legend()
         plt.show()
         
-        
-    def Reg_Fidelity_Graph(self):
-        
-        fig, ax = plt.subplots()
-            
-        if self.feopt != None:
-            plt.scatter(x = self.Outcomes, y = self.feopt, label = 'feopt',  marker='o')
-            
-        plt.scatter(x = self.Outcomes, y = self.f_predictions,      label = 'BB',  marker='x')
-        
-        if self.uncert_pr:
-            plt.scatter(x = self.Outcomes, y = self.e_predictions[:,0], label = 'Exp', marker='+')
-        else:
-            plt.scatter(x = self.Outcomes, y = self.e_predictions,      label = 'Exp', marker='+')
-               
-        ax.set_xlabel('Y Test')
-        ax.set_ylabel('Model Prediction')
-       
-        ax.set_title('Model Predictions vs Y Test')
-        
-        ax.legend()
-        plt.show()
-        
-        
-    def Fidelity(self):
-        
-        if self.Mode == 'classification':
-
-            self.Class_Fidelity()      
-                     
-        else:
-            self.Reg_Fidelity()
                      
             
     def Class_Fidelity(self):
@@ -585,35 +928,6 @@ class Feature_Statistics(object):
         print('BB - Exp Score:  ', f_e_score)
             
 
-            
-    def Reg_Fidelity(self):
-        
-        if self.uncert_pr:
-            exp_predictions = self.e_predictions[:,0]
-        else:
-            exp_predictions = self.e_predictions
-            
-        y_f_differences = np.abs(self.Outcomes - self.f_predictions )
-            
-        y_e_differences = np.abs(self.Outcomes - exp_predictions)
-            
-        f_e_differences = np.abs(self.f_predictions - exp_predictions)
-
-        print('Average, Var, and Max Differences:')
-            
-        print('y - BB(x):          ', np.mean(y_f_differences), ' : ', np.var(y_f_differences),
-              ' : ', np.max(y_f_differences))
-
-        print('y - exp(x):         ', np.mean(y_e_differences), ' : ', np.var(y_e_differences),
-              ' : ', np.max(y_e_differences))
-
-        print('BB(x) - exp(x):     ', np.mean(f_e_differences), ' : ', np.var(f_e_differences),
-              ' : ', np.max(f_e_differences))
-        
-        if self.uncert_pr:
-            print('Average exp(x) var: ', np.mean(self.e_predictions[:,1]))
-            
-        self.fidelity = np.mean(y_e_differences) / np.mean(np.abs(self.Outcomes))
                 
 
     def Jaccard_Values(self, top_k=5):
@@ -645,88 +959,17 @@ class Feature_Statistics(object):
         print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
 
         
-        
-    def Group_String(self):
-        return 'All Features'
 
-    def Print_Data(self):
-        print(self.Feature_Scores)
-        
-    def Print_Scaled(self):
-        print(self.Scaled_Scores)
-
-    def Number_Of_Samples(self):
-        return self.Num_Samples
-    
-    def Get_Features(self):
-        return self.Feature_Names
-    
-    def Get_Classes(self):
-        return self.Classes
-    
-    def Data_Range(self):
-        return self.Min_Outcome, self.Min_Outcome
-        
-    def Get_Ranges(self, num_ranges):
-        
-        outcome_range = self.Max_Outcome - self.Min_Outcome
-        
-        low_val   = self.Min_Outcome - (0.005 * outcome_range)
-        increment = outcome_range * 1.01 / num_ranges
-                
-        return_ranges = np.empty([num_ranges + 1], dtype=float)
-
-        for index in range(num_ranges + 1):
-            return_ranges[index] = low_val + (index * increment)
-
-        return return_ranges
-    
-    def add_Feature_Coeffs(self, Feature_Coeffs):
-        
-        self.Feature_Coeffs = Feature_Coeffs
-        
-        if self.Num_Samples > 0:        
-            self.calculate_Feature_Coeffs()
             
     
     
-    def calculate_Feature_Coeffs(self):
-        
-        mean_scores = np.mean(self.Feature_Scores, axis = 0)
-        
-        self.coeffs_ratio = self.Feature_Coeffs / mean_scores
-        
-        print('Mean Scores: ', mean_scores)
-        print('Mean Coeffs: ', self.Feature_Coeffs)
+ 
         
     
     
     def delete_one(self):
+        return
 
-        mean_scores = np.mean(self.Feature_Scores, axis = 0)
-                              
-        variance = np.zeros(self.Num_Features)
-        
-        for sample in range (self.Num_Samples):
-            
-            y = self.Exp_Models[sample].predict(self.Features[sample].reshape(1,-1))
-        
-            for feature in range(self.Num_Features):
-            
-                X_p = deepcopy(self.Features[sample])
-
-                X_p[feature] = 0
-            
-                X_p = X_p.reshape([1,self.Num_Features])
-                       
-                y_p = self.Exp_Models[sample].predict(X_p)
-           
-                variance[feature] = variance[feature] + np.square(y - y_p)
-            
-        
-        self.delete_one_var = variance / self.Num_Samples
-        
-        return self.delete_one_var
     
             
     def Compare_Models (self, model_b):
@@ -740,38 +983,7 @@ class Feature_Statistics(object):
         print('Score Diff SD:   ', self.model_diff_std)
 
 
-    def Regression_Calibration (self, plot=True, title=''):
-
-        # The Z scores in CRUDE are the difference in actual y and model prediction divided by the
-        # uncertainty. In our case this is the difference in BB and explainer model, divided by the
-        # uncertainty in the explainer model
-        #
-        Z_scores = (self.f_predictions - self.e_predictions[:,0]) / self.e_predictions[:,1]
-        
-        Z_scores = Z_scores.sort()
-        Z_scores = Z_scores.reshape([-1,1])
-        
-        x_calib = (np.arange(self.Num_samples) + 1) / self.Num_samples
-        x_calib = x_calib.reshape([-1,1])
-        
-        # Linear regress required for normalisation
-        LR = LinearRegression(fit_intercept=False)
-        LR.fit(x_calib, Z_scores)
-        
-        max_y = LR.predict(x_calib[-1,:])
-        Z_scores = Z_scores / max_y
-
-        self.calibration_MSE = 1 - mean_squared_error(x_calib, Z_scores)
-        self.calibration_MAE = 1 - mean_absolute_error(x_calib, Z_scores)
-
-        print('Calibration', self.calibration_MSE)
-        
-        if plot:
-            
-            fig, ax = plt.subplots()
-            ax.scatter(x_calib, Z_scores)
-            ax.plot([0,1],[0,1])
-            plt.show()
+ 
 
 
     def Consistancy(self, std_bound, plot=True, title=''):       
@@ -876,10 +1088,10 @@ class Group_Container(object):
 # Classes used to hold and contain statistics for ranges of regression outcomes
 
 
-class Regression_Feature_Statistics(Feature_Statistics):
+class Regression_Feature_Statistics(Feature_Statistics_R):
 
     def __init__(self, lower, upper, feature_names):
-        
+    
         super(Regression_Feature_Statistics, self).__init__(feature_names, 'regression')
 
         self.Lower = lower
@@ -949,7 +1161,7 @@ class Regression_Container(Group_Container):
 # Classes used to hold and contain statistics for different class outcomes
 
 
-class Class_Feature_Statistics(Feature_Statistics):
+class Class_Feature_Statistics(Feature_Statistics_C):
 
     def __init__(self, selected_class, feature_names, classes):
         
