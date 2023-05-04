@@ -541,9 +541,10 @@ class Feature_Statistics(object):
 
 
         self.jaccard_similarities = np.mean(jaccard_similarities)
+        self.jaccard_distances    = np.mean(jaccard_similarities)
         
         print('Mean Jaccard Similarity: ', self.jaccard_similarities)
-        print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
+        print('Mean Jaccard Distance:   ', self.jaccard_distances)
 
     
     def add_Feature_Coeffs(self, Feature_Coeffs):
@@ -696,9 +697,10 @@ class Feature_Statistics_R(Feature_Statistics):
 
 
         self.jaccard_similarities = np.mean(jaccard_similarities)
+        self.jaccard_distances    = np.mean(jaccard_distances)
         
         print('Mean Jaccard Similarity: ', self.jaccard_similarities)
-        print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
+        print('Mean Jaccard Distance:   ', self.jaccard_distances)
 
        
         
@@ -728,15 +730,17 @@ class Feature_Statistics_R(Feature_Statistics):
         self.mean_variance = np.mean(self.del_1_var, axis = 0)
         print('mean_variance',self.mean_variance)
         
-        mean_scores = np.mean(self.del_1_var, axis = 0)
+        mean_scores = np.mean(self.Feature_Scores, axis = 0)
         print('Mean scores:',self.mean_variance)
         
         sort_order = np.argsort(mean_scores)
         print('sort_order',sort_order)
         
         sorted_scores   = mean_scores[sort_order] / np.mean(mean_scores)
+        print('sorted_scores',sorted_scores)
         
         sorted_variance = self.mean_variance[sort_order] / np.mean(self.mean_variance)
+        print('sorted_variance',sorted_variance)
         
         self.deletion1_incoherence = mean_absolute_error(y_true=sorted_scores, y_pred=sorted_variance)
         
@@ -865,7 +869,7 @@ class Feature_Statistics_R(Feature_Statistics):
         print('Delete One Incoherence:  ', self.deletion1_incoherence)
  
         print('Mean Jaccard Similarity: ', self.jaccard_similarities)
-        print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
+        print('Mean Jaccard Distance:   ', self.jaccard_distances)
  
         print('Calibration MSE/MAE: ' , self.calibration_MSE, ':',  self.calibration_MAE)
         
@@ -954,10 +958,10 @@ class Feature_Statistics_C(Feature_Statistics):
 
 
         self.jaccard_similarities = np.mean(jaccard_similarities)
+        self.jaccard_distances    = np.mean(jaccard_similarities)
         
         print('Mean Jaccard Similarity: ', self.jaccard_similarities)
-        print('Mean Jaccard Distance:   ', np.mean(jaccard_distances))
-
+        print('Mean Jaccard Distance:   ', self.jaccard_distances)
         
 
             
