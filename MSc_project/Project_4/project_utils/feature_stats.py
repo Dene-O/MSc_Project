@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from uncertainty_toolbox.metrics_calibration import root_mean_squared_calibration_error
+
 from project_utils.uncertainty_plot import Add_Uncertainty_Plot
 
 from sklearn.linear_model import LinearRegression
@@ -16,6 +18,14 @@ from itertools import combinations
 import pickle
 
 #from sklearn.utils import check_random_state
+
+
+# Mean absolute relative difference
+def MARD(y_true, y_pred):
+
+    residuals = y_true - y_pred
+ 
+    np.abs(2 * residuals / (np.abs(y_pred) + np.abs(y_true))).mean()
 
 
 class Feature_Statistics(object):
@@ -559,7 +569,8 @@ class Feature_Statistics(object):
     def calculate_Feature_Coeffs(self):
 
         mean_score       = np.mean(self.Feature_Scores)        
-        norm_mean_scores = np.mean(self.Feature_Scores, axis = 0) / mean_score
+        mean_scores      = np.mean(self.Feature_Scores, axis = 0)        
+        norm_mean_scores = mean_scores / mean_score
 
         norm_coeff       = self.Feature_Coeffs / np.mean(self.Feature_Coeffs)       
         
@@ -570,6 +581,11 @@ class Feature_Statistics(object):
         self.coeff_error = mean_absolute_error(y_true = np.ones(self.Num_Features), y_pred = self.coeffs_ratio)
         
         print('Mean Coeffs Error: ', self.coeff_error)
+        
+        ################################################
+        corr = np.corrcoef(mean_scores, self.Feature_Coeffs)
+        print('Feature Coeff Correlation: ', corr)
+        ################################################
         
         
     def Group_String(self):
@@ -597,12 +613,23 @@ class Feature_Statistics(object):
     def Compare_Models (self, model_b):
         
         model_diff = self.Feature_Scores - model_b.Feature_Scores
+        
+        mean_scores   = np.mean(self.Feature_Scores)
+        mean_scores_d = np.mean(model_b.Feature_Scores)
        
         self.model_diff_mean = np.mean(model_diff, axis = 0) / np.mean(model_diff)
         self.model_diff_std  = np.std(model_diff, axis = 0)  / np.mean(model_diff)
         
         print('Score Diff Mean: ', self.model_diff_mean)
         print('Score Diff SD:   ', self.model_diff_std)
+        
+        ################################################
+        mard = MARD(mean_scores, mean_scores_d)
+        corr = np.corrcoef(mean_scores, mean_scores_d)
+        print('MARD: ', mard)
+        print('Feature Correlation: ', corr)
+        
+        ################################################
 
 
              
@@ -750,18 +777,16 @@ class Feature_Statistics_R(Feature_Statistics):
         print('Delete One Incoherence:', self.deletion1_incoherence)
         
         
-        
+
+
+
+    def Regression_Calibration_2 (self, plot=True, title=''):
     
-            
-    def Compare_Models (self, model_b):
-        
-        model_diff = self.Feature_Scores - model_b.Feature_Scores
-       
-        self.model_diff_mean = np.mean(model_diff, axis = 0) / np.mean(model_diff)
-        self.model_diff_std  = np.std(model_diff, axis = 0)  / np.mean(model_diff)
-        
-        print('Score Diff Mean: ', self.model_diff_mean)
-        print('Score Diff SD:   ', self.model_diff_std)
+        rmsce = root_mean_squared_calibration_error(y_pred = self.e_predictions[:,0],
+                                                    y_std  = self.e_predictions[:,1],
+                                                    y_true = self.f_predictions)
+                                                    
+        print('root_mean_squared_calibration_error: ', rmsce)
 
 
     def Regression_Calibration (self, plot=True, title=''):
@@ -974,20 +999,7 @@ class Feature_Statistics_C(Feature_Statistics):
     def delete_one(self):
         return
 
-    
-            
-    def Compare_Models (self, model_b):
-        
-        model_diff = self.Feature_Scores - model_b.Feature_Scores
-       
-        self.model_diff_mean = np.mean(model_diff, axis = 0) / np.mean(model_diff)
-        self.model_diff_std  = np.std(model_diff, axis = 0)  / np.mean(model_diff)
-        
-        print('Score Diff Mean: ', self.model_diff_mean)
-        print('Score Diff SD:   ', self.model_diff_std)
 
-
- 
 
 
     def Consistancy(self, std_bound, plot=True, title=''):       
