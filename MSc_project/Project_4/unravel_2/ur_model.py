@@ -14,6 +14,8 @@ from matplotlib import pyplot as plt
 
 from unravel_2.acquisition_function import FUR_W
 
+from unravel_2.kernel import get_kernel_sklearn
+
 from project_utils.acq_data_capture import Acq_Data_1D_For
 from project_utils.acq_data_capture import Acq_Data_1D
 from project_utils.acq_data_capture import Acq_Data_2D
@@ -77,24 +79,11 @@ class UR_Model(object):
         return self.bbox_model.predict_proba(np.array(X).ravel())
     
     
-    def Normalise_X(self, X):
-        return ((X - self.mean_x) / self.std_x) 
-    
-    
-    def Denormalise_X(self, X):
-        return ((X * self.std_x) + self.mean_x) 
-    
     def exp_predict_proba(self, X):
-        if self.normalize:           
-            return self.gp_model.predict_proba(X = np.array(self.Normalise_X(X)).reshape(1, -1))
-        else:
-            return self.gp_model.predict_proba(X = np.array(X).reshape(1, -1))
+        return self.gp_model.predict_proba(X = np.array(X).reshape(1, -1))
     
     def exp_predict(self, X):
-        if self.normalize:
-            return self.gp_model.predict(X = np.array(self.Normalise_X(X)).reshape(1, -1), return_std = True)
-        else:
-            return self.gp_model.predict(X = np.array(X).reshape(1, -1), return_std = True)
+        return self.gp_model.predict(X = np.array(X).reshape(1, -1), return_std = True)
     
     
     def get_BB_model(self):
@@ -108,12 +97,19 @@ class UR_Model(object):
         L_copy = deepcopy(self.gp_model.L_)
         return L_copy   
     
-    def train_gaussian_process(self, x_train, y_train):
+    def train_gaussian_process(self, x_train, y_train, n_features=0):
 
+        
         if self.kernel_type == None or self.kernel_type == "RBF":
             kernel = RBF()
         elif self.kernel_type == "Matern":
             kernel = Matern()
+        else:
+            if n_features == 0:
+                n_features = self.N_features
+                
+            kernel = get_kernel_sklearn(self.kernel_type, n_features)
+        
     
         gpr = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer = 10, optimizer='fmin_l_bfgs_b', normalize_y = False, copy_X_train=True)
         gpr.fit(x_train, y_train)
@@ -125,11 +121,10 @@ class UR_Model(object):
     def explain(self,
                 X_init,
                 Dimension='Multi D',
-                kernel_type="RBF",
+                kernel_type="Matern_3",
                 max_iter=20,
                 alpha="FUR_W",
                 #jitter=5,
-                normalize=False,
                 #plot=False,
                 interval=1,
                 weight=None,
@@ -144,13 +139,10 @@ class UR_Model(object):
         
         self.X_init   = X_init
         self.X_train  = X_init
-        self.XN_train = self.Normalise_X(X_init)
         
         self.y_train = self.bbox_model.predict(self.X_train)
         self.y_train = np.array(self.y_train)
-        
-        self.normalize = normalize
-        
+               
         bounds = np.empty([2,self.N_features])
         
         bounds[0,:] = self.X_init - self.std_x
@@ -169,29 +161,17 @@ class UR_Model(object):
             self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
 
 
-        
-        if self.normalize:
-        
-            self.gp_model = self.train_gaussian_process(self.XN_train, self.y_train)
-            
-            acq_function = FUR_W(X_init     = self.XN_train,
-                                 std_x      = np.ones(len(self.feature_names)),
-                                 weight     = weight,
-                                 n_samples  = n_samples,
-                                 sample_opt = self.sampling_optimize,
-                                 bounds     = interval)
-        else:
-            
-            self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
-            #print('X train ', self.X_train)
+        self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
+        #print('X train ', self.X_train)
 
             
-            acq_function = FUR_W(X_init     = self.X_init,
-                                 std_x      = self.std_x, 
-                                 weight     = weight,
-                                 n_samples  = n_samples,
-                                 sample_opt = self.sampling_optimize,
-                                 bounds     = interval)
+        acq_function = FUR_W(X_init     = self.X_init,
+                             mean_x     = self.mean_x, 
+                             std_x      = self.std_x, 
+                             weight     = weight,
+                             n_samples  = n_samples,
+                             sample_opt = self.sampling_optimize,
+                             bounds     = interval)
         
         
         for iter in range(max_iter):
@@ -209,37 +189,22 @@ class UR_Model(object):
                                 t1_t2        = True)
 
             
-
-            if self.normalize:
-                
-                xd_next = self.Denormalise_X(x_next)
-
-                self.X_train  = np.vstack([self.X_train,  xd_next])
-                self.XN_train = np.vstack([self.XN_train, x_next])
+            self.X_train  = np.vstack([self.X_train,  x_next])
             
-                y_next = self.bbox_model.predict(xd_next)
+            y_next = self.bbox_model.predict(x_next)
             
-                self.y_train = np.append(self.y_train, [y_next])
+            self.y_train = np.append(self.y_train, [y_next])
             
-                self.gp_model = self.train_gaussian_process(self.XN_train, self.y_train)
-            
-            else:
-                
-                xn_next = self.Normalise_X(x_next)
-
-                self.X_train  = np.vstack([self.X_train,  x_next])
-                self.XN_train = np.vstack([self.XN_train, xn_next])
-            
-                y_next = self.bbox_model.predict(x_next)
-            
-                self.y_train = np.append(self.y_train, [y_next])
-            
-                self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
+            self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
             
             
             
-    def Plot(self, scores):
+    def Plot(self, scores, filename=""):
         plt.barh(y = self.feature_names, width = scores)
+
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
 
             
@@ -345,7 +310,7 @@ class UR_Model(object):
                        
             y_p = self.gp_model.predict(X_p)
            
-            variance[feature] = np.square(y - y_p)
+            variance[feature] = np.abs(y - y_p)
             
         
         self.del_1_variance = variance
@@ -381,7 +346,7 @@ class UR_Model(object):
                 X_train_p[:,feature_inner - 1] = self.X_train[:,feature_inner]
                 
                 
-            GP = self.train_gaussian_process(X_train_p, self.y_train)
+            GP = self.train_gaussian_process(X_train_p, self.y_train, self.N_features - 1)
 
             X_p = X_train_p[0,:].reshape(1,-1)
                        
@@ -421,11 +386,11 @@ class UR_Model(object):
         return self.lin_scores
 
     
-    def plot_scores(self, title, weights):
+    def plot_scores(self, title, filename=""):
         
         fig, ax = plt.subplots()
         
-        title = title  + ' W: ' + str(weights)
+        title = title
         
         ax.set_title(title)
         
@@ -455,10 +420,13 @@ class UR_Model(object):
         ax.plot(x, Lin, label='Lin')           
         
         ax.legend()
-        
+
         fig.tight_layout()
 
-        plt.show()
+        if filename != "":
+            plt.savefig(fname=filename)
+        
+        plt.show() 
         
         
     def Y_Consistancy(self, N_points, std_bound):       

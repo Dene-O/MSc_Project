@@ -1,0 +1,19 @@
+        print('Feature Coeff Correlation: ', self.Coefficient_correlation)
+
+
+        print('Feature Correlation: ', self.model_correlation)
+#        print('Mean Jaccard Similarity: ', self.jaccard_similarities)
+#        print('Mean Jaccard Distance:   ', self.jaccard_distances)
+		
+#        print('R Score:  ', self.r2_score)
+#        print('Fidelity: ', self.fidelity.round(4))
+
+        print('Delete 1 error:', self.deletion1_error)
+        print('Delete 1 Correlation:', self.deletion1_correlation)
+		
+#        print('Calibration MSE/MAE', self.calibration_MSE, self.calibration_MAE)
+		
+#        print('Y Perturbed Means:', y_pert_mean[0], y_pert_mean[N_1_4], y_pert_mean[N_3_4], y_pert_mean[-1])
+		
+		
+		

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def Uncertainty_Plot(Title, x, y, uncert=[], x_label='', y_label='', scheme=1):
+def Uncertainty_Plot(Title, x, y, uncert=[], x_label='', y_label='', scheme=1, filename=""):
     
       
     fig, ax = plt.subplots()
@@ -13,6 +13,10 @@ def Uncertainty_Plot(Title, x, y, uncert=[], x_label='', y_label='', scheme=1):
     ax.set_title(Title)
 
     fig.tight_layout()
+    
+    if filename != "":
+        plt.savefig(fname=filename)
+        
     plt.show()
             
 def Add_Uncertainty_Plot(axis, x, y, uncert=[], scheme=1):

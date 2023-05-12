@@ -11,6 +11,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process import GaussianProcessClassifier
 
 from sklearn.datasets import make_regression
 from sklearn.datasets import make_classification
@@ -32,7 +33,8 @@ class BB_Model(object):
                  train_size=0.80,
                  N_samples=500,
                  Feature_Counts=[],
-                 random_state=None):
+                 random_state=None,
+                 plot_file=""):
 
         self.data_frame = None
 
@@ -233,6 +235,10 @@ class BB_Model(object):
 
             fig, ax = plt.subplots()
             ax.plot(X, self.y, linewidth=1.0)
+
+            if plot_file != "":
+                plt.savefig(fname=plot_file)
+        
             plt.show()
                         
             self.X = np.empty([1000, 1])
@@ -287,8 +293,10 @@ class BB_Model(object):
             contours = ax.contour(self.X1, self.X2, self.Z, levels = 8)
             ax.clabel(contours, inline=True, fontsize=10)
             
+            if plot_file != "":
+                plt.savefig(fname=plot_file)
+        
             plt.show()
-                                   
             
 
         ################################################################################################################
@@ -355,8 +363,10 @@ class BB_Model(object):
             contours = ax.contour(self.X1, self.X2, self.Z)
             ax.clabel(contours, inline=True, fontsize=10)
             
+            if plot_file != "":
+                plt.savefig(fname=plot_file)
+        
             plt.show()
-                                   
             
 
             

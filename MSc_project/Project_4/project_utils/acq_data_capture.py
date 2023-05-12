@@ -113,7 +113,7 @@ class Acq_Data_1D(Acq_Data):
         ax.plot(self.norm_x_range, self.BB_predictions, linewidth=1.0, color = color)  
         
         
-    def plot_point(self, p=0):
+    def plot_point(self, p=0, filename=""):
         
         if p < 0 or p >= self.N_iter_points:
             print("Out of Range Point")
@@ -145,10 +145,13 @@ class Acq_Data_1D(Acq_Data):
 
         fig.tight_layout()
         
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
                         
         
-    def plot_all(self):
+    def plot_all(self, filename=""):
               
         fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
         
@@ -174,7 +177,11 @@ class Acq_Data_1D(Acq_Data):
             
         fig.tight_layout()
 
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
+            
                         
     def get_fe_x0(self):
         return self.fe_x0
@@ -252,7 +259,7 @@ class Acq_Data_1D_For(Acq_Data):
     def Forrester(x):
         return np.square(6.0*x - 2.0)*np.sin(12.0*x - 4.0)
             
-    def plot_point(self, p=0):
+    def plot_point(self, p=0, filename=""):
         
         if p < 0 or p >= self.N_iter_points:
             print("Out of Range Point")
@@ -286,10 +293,14 @@ class Acq_Data_1D_For(Acq_Data):
 
         fig.tight_layout()
         
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
+
                         
         
-    def plot_all(self):
+    def plot_all(self, filename=""):
         
         yvals  = Acq_Data_1D_For.Forrester(self.norm_x_range)
        
@@ -318,7 +329,11 @@ class Acq_Data_1D_For(Acq_Data):
             
         fig.tight_layout()
 
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
+            
                         
     def get_fe_x0(self):
         return self.fe_x0
@@ -328,7 +343,7 @@ class Acq_Data_1D_For(Acq_Data):
 
 
 
-    def plot_t1_t2(self, point):
+    def plot_t1_t2(self, point, filename=""):
         
         fig, ax = plt.subplots()
         
@@ -346,6 +361,9 @@ class Acq_Data_1D_For(Acq_Data):
                     
         fig.tight_layout()
 
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
         
 ###############################################################################################################################        
@@ -475,7 +493,7 @@ class Acq_Data_2D(Acq_Data):
         ax.clabel(contours, inline=True, fontsize = fontsize)
             
             
-    def plot_point(self, point, plot_4=True):
+    def plot_point(self, point, plot_4=True, filename=""):
         
         if point < 0 or point >= self.N_iter_points:
             print("Out of Range Point")
@@ -517,10 +535,13 @@ class Acq_Data_2D(Acq_Data):
             
         fig.tight_layout()
         
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
                         
         
-    def plot_all(self):
+    def plot_all(self, filename=""):
         fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
 
         ax1.set_yticks(ticks=[])
@@ -541,7 +562,11 @@ class Acq_Data_2D(Acq_Data):
             
         fig.tight_layout()
 
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
+        
                         
     def get_fe_x0(self):
         return self.fe_x0
@@ -625,7 +650,7 @@ class Acq_Data_2D_For(Acq_Data):
 
         
             
-    def plot_point(self, point, plot_4=True):
+    def plot_point(self, point, plot_4=True, filename=""):
         
         if point < 0 or point >= self.N_iter_points:
             print("Out of Range Point")
@@ -673,10 +698,13 @@ class Acq_Data_2D_For(Acq_Data):
             
         fig.tight_layout()
         
-        plt.show()
-                        
+        if filename != "":
+            plt.savefig(fname=filename)
         
-    def plot_all(self):
+        plt.show()
+        
+        
+    def plot_all(self, filename=""):
         fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
 
         ax1.set_yticks(ticks=[])
@@ -700,6 +728,9 @@ class Acq_Data_2D_For(Acq_Data):
             
         fig.tight_layout()
 
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
                         
     def get_fe_x0(self):
@@ -819,7 +850,7 @@ class Acq_Data_nD(Acq_Data):
       
         ax.plot(self.norm_x_range, self.BB_predictions, linewidth=1.0, color = color)        
 
-    def plot_point(self, p=0):
+    def plot_point(self, p=0, filename=""):
 
         if p < 0 or p >= self.N_iter_points:
             print("Out of Range Point")
@@ -855,11 +886,14 @@ class Acq_Data_nD(Acq_Data):
 
         fig.tight_layout()
         
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
                         
         
         
-    def plot_all(self):
+    def plot_all(self, filename=""):
                
         fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [1, 10]})
               
@@ -890,9 +924,13 @@ class Acq_Data_nD(Acq_Data):
             
         fig.tight_layout()
 
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
+            
                             
-    def plot_t1_t2(self, point):
+    def plot_t1_t2(self, point, filename=""):
         
         fig, ax = plt.subplots()
         
@@ -908,6 +946,10 @@ class Acq_Data_nD(Acq_Data):
         fig.tight_layout()
 
         ax.legend()
+
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
         
     
