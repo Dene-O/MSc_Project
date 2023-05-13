@@ -21,18 +21,22 @@ class Acq_Base(object):
 class FUR_W(Acq_Base):
     
    
-    def __init__(self, X_init, std_x, weight=None, sample_opt="Gaussian", n_samples=200, LHC_strength=1, bounds=1):
+    def __init__(self, X_init, mean_x, std_x, weight=None, normalise = True, sample_opt="Gaussian", n_samples=200, LHC_strength=1, bounds=1):
+        
+        self.mean_x = mean_x
+        self.std_x  = std_x
         
         self.X_init = X_init
+        self.X_init_N = self.Normalise_X(X_init)
         
         self.iter  = 1
         self.delta = np.random.randn()
         
         self.n_features = X_init.shape[1]
         
-        self.std_x = std_x
-        
         self.X_next = X_init
+        
+        self.normalise = normalise
      
         if weight == None:
             self.weight = [0.5, 0.5]
@@ -102,6 +106,10 @@ class FUR_W(Acq_Base):
         
 #        original Unravel -> self.delta = np.random.randn() # Moved to next_x
         
+    
+        if self.normalise:
+            t1 = self.weight[0] * -np.linalg.norm(self.Normalise_X(x) - self.X_init_N - self.delta / np.log(self.iter))
+        else:
         t1 = self.weight[0] * -np.linalg.norm(x - self.X_init - self.std_x * self.delta / np.log(self.iter))
 
         t2 = self.weight[1] * std_p.item()
@@ -243,6 +251,14 @@ class FUR_W(Acq_Base):
         
         plt.scatter(self.X_diffs, self.acqu_fs)
         
+        
+    def Normalise_X(self, X):
+        return ((X - self.mean_x) / self.std_x) 
+    
+    
+    def Denormalise_X(self, X):
+        return ((X * self.std_x) + self.mean_x) 
+    
     
 
         

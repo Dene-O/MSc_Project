@@ -107,7 +107,7 @@ class Feature_Statistics(object):
             
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
-        self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
+        self.Features       = np.vstack([self.Features, np.array(X_row, dtype=float)])
 
         if feopt == None:
             self.feopt = None
@@ -157,7 +157,7 @@ class Feature_Statistics(object):
             
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
-        self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
+        self.Features       = np.vstack([self.Features, np.array(X_row, dtype=float)])
 
         self.Exp_Models.append(model)
 

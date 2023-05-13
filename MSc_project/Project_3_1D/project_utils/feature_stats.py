@@ -134,7 +134,7 @@ class Feature_Statistics(object):
             
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
-        self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
+        self.Features       = np.vstack([self.Features, np.array(X_row, dtype=float)])
 
         if feopt == None:
             self.feopt = None
@@ -185,7 +185,7 @@ class Feature_Statistics(object):
             
         self.Feature_Scores = np.vstack([self.Feature_Scores, new_row])
         self.Scaled_Scores  = np.vstack([self.Scaled_Scores,  scaled_row])
-        self.Features       = np.vstack([self.Feature_Scores, np.array(X_row, dtype=float)])
+        self.Features       = np.vstack([self.Features, np.array(X_row, dtype=float)])
 
         self.Num_Samples += 1
         
@@ -647,8 +647,31 @@ class Feature_Statistics(object):
         self.model_correlation = np.corrcoef(mean_scores, mean_scores_d)[0,1]
         print(' Model Feature Correlation: ', self.model_correlation)
         
+    def add_bb_del_1(self, BB_model):
+    
+        self.BB_del_1_var = np.empty([self.Num_Samples, self.Num_Features], dtype=float)
 
-
+        for i_sample in range (self.Num_Samples):
+        
+            for i_feature in range(self.Num_Features):
+            
+                X = deepcopy(self.Features[i_sample,:])
+            
+                X[i_feature] = 0
+            
+                if self.Mode == 'classification':
+                    y = BB_model.predict_proba(X.reshape(1, -1))
+                    
+                    #print('XXX',self.f_predictions[i_sample,0], y[0])
+                
+                    self.BB_del_1_var[i_sample,i_feature] = np.abs(self.f_predictions[i_sample,0] - y[0,0])
+                else:    
+                    y = BB_model.predict(X.reshape(1, -1))
+                
+                    self.BB_del_1_var[i_sample,i_feature] = np.abs(self.f_predictions[i_sample] - y[0])
+                
+                
+        print(self.BB_del_1_var)
              
             
 ####################################################################################################
@@ -795,11 +818,18 @@ class Feature_Statistics_R(Feature_Statistics):
         self.deletion1_correlation = np.corrcoef(sorted_variance, sorted_scores)[0,1]
         
         
+        mean_BB_var = np.mean(self.BB_del_1_var, axis = 0)
+        print('Mean BB Variance: ', mean_BB_var)
+        
+        self.BB_de1_correlation = np.corrcoef(self.mean_variance, mean_BB_var)[0,1]
+        
         print('Prediction Variance Feature Deletion 1:', self.mean_variance)
         
         print('Delete 1 error:', self.deletion1_error)
         
         print('Delete 1 Correlation:', self.deletion1_correlation)
+        
+        print('Delete 1 BB Correlation:', self.BB_de1_correlation)
         
         
     def Consistancy(self, std_bound, plot=True, title='', filename=""):     
@@ -933,8 +963,9 @@ class Feature_Statistics_R(Feature_Statistics):
         
         print('Consistancey Std/Y Pert: ', self.Consistancy_std_bound, ':', self.Y_Consistancy_Pert)
 
-        print('Delete 1 error:      ', self.deletion1_error)
-        print('Delete 1 Correlation:', self.deletion1_correlation)
+        print('Delete 1 error:         ', self.deletion1_error)
+        print('Delete 1 Correlation:   ', self.deletion1_correlation)
+        print('Delete 1 BB Correlation:', self.BB_de1_correlation)
  
         print('Mean Jaccard Similarity: ', self.jaccard_similarities)
         print('Mean Jaccard Distance:   ', self.jaccard_distances)
@@ -1099,7 +1130,13 @@ class Feature_Statistics_C(Feature_Statistics):
 
         f_class_predictions = np.round(self.f_predictions[:,1], 0)
         
-        self.Brier_Score = brier_score_loss(y_true = f_class_predictions, y_prob = self.e_predictions[:,1])
+        e_class_probabilities = self.e_predictions[:,1]
+        
+        print(f_class_predictions, e_class_probabilities)
+        print('Brier_Score')
+        print(self.f_predictions, self.e_predictions)
+        
+        self.Brier_Score = brier_score_loss(y_true = f_class_predictions, y_prob = e_class_probabilities)
         
         print('Brier_Score: ', self.Brier_Score)
     
@@ -1125,13 +1162,20 @@ class Feature_Statistics_C(Feature_Statistics):
 
         self.deletion1_correlation = np.corrcoef(sorted_variance, sorted_scores)[0,1]
       
+        mean_BB_var = np.mean(self.BB_del_1_var, axis = 0)
+        print('Mean BB Variance: ', mean_BB_var)
+        
+        self.BB_de1_correlation = np.corrcoef(self.mean_variance, mean_BB_var)[0,1]
+        
         
         print('Prediction Variance Feature Deletion 1:', self.mean_variance)
         
-        print('Delete 1 error:', self.deletion1_error)
+        print('Delete 1 error:         ', self.deletion1_error)
             
-        print('Delete 1 Correlation:', self.deletion1_correlation)
-                
+        print('Delete 1 Correlation:   ', self.deletion1_correlation)
+        
+        print('Delete 1 BB Correlation:', self.BB_de1_correlation)
+               
             
            
     def Results_Summary(self, Title):
@@ -1149,8 +1193,9 @@ class Feature_Statistics_C(Feature_Statistics):
  
         print('Consistancey Std/P Pert: ', self.Consistancy_std_bound, ':', self.P_Consistancy_Pert)
 
-        print('Delete 1 error:      ', self.deletion1_error)
-        print('Delete 1 Correlation:', self.deletion1_correlation)
+        print('Delete 1 error:         ', self.deletion1_error)
+        print('Delete 1 Correlation:   ', self.deletion1_correlation)
+        print('Delete 1 BB Correlation:', self.BB_de1_correlation)
 
         print('Mean Jaccard Similarity: ', self.jaccard_similarities)
         print('Mean Jaccard Distance:   ', self.jaccard_distances)

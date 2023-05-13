@@ -84,6 +84,58 @@ class BB_Model(object):
             self.Read_File('datasets/diabetes.csv')
             
             
+        ################################################################################################################
+        elif dataset == 'Diabetes_2':
+
+            self.mode = 'classification'
+            
+            self.feature_names = [['gender','age','hypertension','heart_disease','smoking_history','bmi','HbA1c_level','blood_glucose_level']]
+
+            self.outcome = 'diabetes'
+            
+            self.class_names = ['Healthy', 'Diabetic']
+            
+            self.catagorical_features = []
+
+            self.Read_File('datasets/diabetes.csv')
+            
+            
+          
+        ################################################################################################################
+        elif dataset == 'parkinsons':
+
+            self.mode = 'classification'
+            
+            self.feature_names = ['MDVP:Fo(Hz)','MDVP:Fhi(Hz)','MDVP:Flo(Hz)','MDVP:Jitter(%)','MDVP:Jitter(Abs)','MDVP:RAP',
+                                  'MDVP:PPQ','Jitter:DDP','MDVP:Shimmer','MDVP:Shimmer(dB)','Shimmer:APQ3','Shimmer:APQ5',
+                                  'MDVP:APQ','Shimmer:DDA','NHR','HNR','RPDE','DFA','spread1','spread2','D2','PPE']
+
+            self.outcome = 'status'
+            
+            self.class_names = ['Healthy', 'Parkinsons']
+            
+            self.catagorical_features = []
+
+            self.Read_File('datasets/parkinsons.csv')
+            
+            
+          
+        ################################################################################################################
+        elif dataset == 'Heart':
+
+            self.mode = 'classification'
+            
+            self.feature_names = ['age','sex','cp','trestbps','chol','fbs','restecg','thalach','exang','oldpeak','slope','ca','thal']
+
+            self.outcome = 'target'
+            
+            self.class_names = ['Healthy', 'Heart_disease']
+            
+            self.catagorical_features = []
+
+            self.Read_File('datasets/HD.csv')
+            
+            
           
         ################################################################################################################
         elif dataset == 'Classification' or dataset == 'classification':

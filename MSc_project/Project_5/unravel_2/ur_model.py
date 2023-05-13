@@ -80,7 +80,10 @@ class UR_Model(object):
     
     
     def exp_predict_proba(self, X):
-        return self.gp_model.predict_proba(X = np.array(X).reshape(1, -1))
+        prediction = np.empty(2)
+        prediction[0] =  self.gp_model.predict(X = np.array(X).reshape(1, -1))[0]
+        prediction[1] = 1 - prediction[0]
+        return prediction
     
     def exp_predict(self, X):
         return self.gp_model.predict(X = np.array(X).reshape(1, -1), return_std = True)
@@ -140,8 +143,11 @@ class UR_Model(object):
         self.X_init   = X_init
         self.X_train  = X_init
         
-        self.y_train = self.bbox_model.predict(self.X_train)
-        self.y_train = np.array(self.y_train)
+        if self.mode == 'regression':
+            self.y_train = self.bbox_model.predict(self.X_train)
+        else:
+            self.y_train = self.bbox_model.predict_proba(self.X_train)
+            self.y_train = self.y_train[:,0]
                
         bounds = np.empty([2,self.N_features])
         
@@ -191,7 +197,10 @@ class UR_Model(object):
             
             self.X_train  = np.vstack([self.X_train,  x_next])
             
-            y_next = self.bbox_model.predict(x_next)
+            if self.mode == 'regression':
+                y_next = self.bbox_model.predict(x_next)
+            else:
+                y_next = self.bbox_model.predict_proba(x_next)[:,0]
             
             self.y_train = np.append(self.y_train, [y_next])
             
@@ -298,7 +307,11 @@ class UR_Model(object):
         
         variance = np.empty(self.N_features)
         
-        y = self.gp_model.predict(self.X_init)
+        if self.mode == 'regression':
+            y = self.gp_model.predict(self.X_init)
+        else:
+            y_prob = self.gp_model.predict(self.X_init)
+            y      = y_prob[0]
         
         for feature in range(self.N_features):
             
@@ -308,7 +321,11 @@ class UR_Model(object):
             
             X_p = X_p.reshape([1,self.N_features])
                        
-            y_p = self.gp_model.predict(X_p)
+            if self.mode == 'regression':
+                y_p = self.gp_model.predict(X_p)
+            else:
+                y_prob = self.gp_model.predict(X_p)
+                y_p    = y_prob[0]
            
             variance[feature] = np.abs(y - y_p)
             

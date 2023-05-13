@@ -80,10 +80,13 @@ class UR_Model(object):
     
     
     def exp_predict_proba(self, X):
-            return self.gp_model.predict_proba(X = np.array(X).reshape(1, -1))
+        prediction = np.empty(2)
+        prediction[0] =  self.gp_model.predict(X = np.array(X).reshape(1, -1))[0]
+        prediction[1] = 1 - prediction[0]
+        return prediction
     
     def exp_predict(self, X):
-            return self.gp_model.predict(X = np.array(X).reshape(1, -1), return_std = True)
+        return self.gp_model.predict(X = np.array(X).reshape(1, -1), return_std = True)
     
     
     def get_BB_model(self):
@@ -99,7 +102,7 @@ class UR_Model(object):
     
     def train_gaussian_process(self, x_train, y_train, n_features=0):
 
-
+        
         if self.kernel_type == None or self.kernel_type == "RBF":
             kernel = RBF()
         elif self.kernel_type == "Matern":
@@ -140,9 +143,15 @@ class UR_Model(object):
         self.X_init   = X_init
         self.X_train  = X_init
         
-        self.y_train = self.bbox_model.predict(self.X_train)
-        self.y_train = np.array(self.y_train)
-        
+        if self.mode == 'regression':
+            self.y_train = self.bbox_model.predict(self.X_train)
+        else:
+            self.y_train = self.bbox_model.predict_proba(self.X_train)
+            
+        print('Y Train', self.y_train)
+        self.y_train = self.y_train[:,0]
+        print('Y Train', self.y_train)
+               
         bounds = np.empty([2,self.N_features])
         
         bounds[0,:] = self.X_init - self.std_x
@@ -161,17 +170,17 @@ class UR_Model(object):
             self.acq_data = Acq_Data_nD(X_Init = X_init, bounds = bounds, BB_Model = self.bbox_model)
 
 
-            self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
-            #print('X train ', self.X_train)
+        self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
+        #print('X train ', self.X_train)
 
             
-            acq_function = FUR_W(X_init     = self.X_init,
-                                 mean_x     = self.mean_x, 
-                                 std_x      = self.std_x, 
-                                 weight     = weight,
-                                 n_samples  = n_samples,
-                                 sample_opt = self.sampling_optimize,
-                                 bounds     = interval)
+        acq_function = FUR_W(X_init     = self.X_init,
+                             mean_x     = self.mean_x, 
+                             std_x      = self.std_x, 
+                             weight     = weight,
+                             n_samples  = n_samples,
+                             sample_opt = self.sampling_optimize,
+                             bounds     = interval)
         
         
         for iter in range(max_iter):
@@ -189,18 +198,25 @@ class UR_Model(object):
                                 t1_t2        = True)
 
             
-                self.X_train  = np.vstack([self.X_train,  x_next])
+            self.X_train  = np.vstack([self.X_train,  x_next])
             
+            if self.mode == 'regression':
                 y_next = self.bbox_model.predict(x_next)
+            else:
+                y_next = self.bbox_model.predict_proba(x_next)[:,0]
             
-                self.y_train = np.append(self.y_train, [y_next])
+            self.y_train = np.append(self.y_train, [y_next])
             
-                self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
+            self.gp_model = self.train_gaussian_process(self.X_train, self.y_train)
             
             
             
-    def Plot(self, scores):
+    def Plot(self, scores, filename=""):
         plt.barh(y = self.feature_names, width = scores)
+
+        if filename != "":
+            plt.savefig(fname=filename)
+        
         plt.show()
 
             
@@ -294,7 +310,11 @@ class UR_Model(object):
         
         variance = np.empty(self.N_features)
         
-        y = self.gp_model.predict(self.X_init)
+        if self.mode == 'regression':
+            y = self.gp_model.predict(self.X_init)
+        else:
+            y_prob = self.gp_model.predict(self.X_init)
+            y      = y_prob[0]
         
         for feature in range(self.N_features):
             
@@ -304,7 +324,11 @@ class UR_Model(object):
             
             X_p = X_p.reshape([1,self.N_features])
                        
-            y_p = self.gp_model.predict(X_p)
+            if self.mode == 'regression':
+                y_p = self.gp_model.predict(X_p)
+            else:
+                y_prob = self.gp_model.predict(X_p)
+                y_p    = y_prob[0]
            
             variance[feature] = np.abs(y - y_p)
             
@@ -315,7 +339,7 @@ class UR_Model(object):
         
         return self.del_1_scores
             
-            
+
     def get_del_1_variance(self):
         return self.del_1_variance
         
@@ -382,7 +406,7 @@ class UR_Model(object):
         return self.lin_scores
 
     
-    def plot_scores(self, title):
+    def plot_scores(self, title, filename=""):
         
         fig, ax = plt.subplots()
         
@@ -416,10 +440,13 @@ class UR_Model(object):
         ax.plot(x, Lin, label='Lin')           
         
         ax.legend()
-        
+
         fig.tight_layout()
 
-        plt.show()
+        if filename != "":
+            plt.savefig(fname=filename)
+        
+        plt.show() 
         
         
     def Y_Consistancy(self, N_points, std_bound):       
