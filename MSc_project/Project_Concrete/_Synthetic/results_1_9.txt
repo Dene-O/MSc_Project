@@ -1,0 +1,39 @@
+Results_Summary: Synthetic Regression W:[0.1, 0.9]
+ Model Feature Correlation:  0.9979584878590144
+R Score:   1.0
+Fidelity:  1.0
+Consistancey Std/Y Pert:  0.3 : 0.1856860563270198
+Delete 1 error:       1.044309549162838
+Delete 1 Correlation: -0.1365104770278908
+Mean Jaccard Similarity:  0.8301414141414141
+Mean Jaccard Distance:    0.16985858585858585
+Calibration MSE/MAE:  0.9900593673491329 : 0.9303902444697262
+ Model Feature Correlation:  0.9979584878590144
+Mean Coeffs Error:  0.6542365097386376
+
+Results_Summary: Synthetic Regression W:[0.1, 0.9]
+ Model Feature Correlation:  0.8717353951820765
+R Score:   1.0
+Fidelity:  1.0
+Consistancey Std/Y Pert:  0.3 : 0.02139072707271067
+Delete 1 error:       0.48181205935524496
+Delete 1 Correlation: -0.26166157572331267
+Mean Jaccard Similarity:  0.6226801346801346
+Mean Jaccard Distance:    0.3773198653198654
+Calibration MSE/MAE:  0.8025012864709363 : 0.7584571631497289
+ Model Feature Correlation:  0.8717353951820765
+Mean Coeffs Error:  0.032344107376658396
+
+
+Results_Summary: Synthetic Regression W:[0.1, 0.9]
+ Model Feature Correlation:  0.9943833115667161
+R Score:   1.0
+Fidelity:  1.0
+Consistancey Std/Y Pert:  0.3 : -0.2779565677281755
+Delete 1 error:       0.8584055417321781
+Delete 1 Correlation: 0.5411797371072308
+Mean Jaccard Similarity:  0.7629360269360268
+Mean Jaccard Distance:    0.23706397306397306
+Calibration MSE/MAE:  0.9901840736222539 : 0.9335162728181764
+ Model Feature Correlation:  0.9943833115667161
+Mean Coeffs Error:  0.07497975373564628
